@@ -458,6 +458,29 @@ VSCODE_SETTINGS = {
     "window.title": "${dirty}${activeEditorShort}${separator}${rootName}${separator}${appName}",
 }
 
+# VS Code's built-in language defaults (e.g. "[json]" turns suggestions back on inside
+# strings) beat the general settings above, so repeat the important ones per language.
+_PER_LANGUAGE = {
+    "editor.quickSuggestions": {"other": "off", "comments": "off", "strings": "off"},
+    "editor.suggestOnTriggerCharacters": False,
+    "editor.acceptSuggestionOnEnter": "off",
+    "editor.wordBasedSuggestions": "off",
+    "editor.autoClosingBrackets": "never",
+    "editor.autoClosingQuotes": "never",
+    "editor.autoSurround": "never",
+    "editor.autoIndent": "none",
+    "editor.formatOnType": False,
+    "editor.insertSpaces": False,
+    "editor.detectIndentation": False,
+    "editor.tabCompletion": "off",
+    "editor.inlineSuggest.enabled": False,
+    "editor.suggest.insertMode": "insert",
+}
+for _lang in ("json", "jsonc", "markdown", "ignore", "properties", "dotenv", "php", "html",
+              "javascript", "typescript", "css", "scss", "shellscript", "dockerfile", "sql",
+              "yaml", "python", "plaintext", "xml", "ini", "powershell", "bat", "apacheconf"):
+    VSCODE_SETTINGS[f"[{_lang}]"] = dict(_PER_LANGUAGE)
+
 
 # --------------------------------------------------------------------------
 # The replayer
@@ -500,6 +523,11 @@ class Replayer:
         self.done = set()
         self.cur_step_key = None      # file being typed (for mid-file resume)
         self.cur_line = 0
+        self.cur_lines = None
+        self.mismatches = 0
+        self.project_funcs = set()    # names the project defines (not worth searching)
+        self.project_classes = set()
+        self.php_builtins = php_builtin_functions()
 
         self.listener = keyboard.Listener(on_press=self._on_hotkey)
         self.listener.daemon = True
@@ -706,7 +734,9 @@ class Replayer:
         sys.exit("Could not find the VS Code window. Is the `code` command on PATH?")
 
     def find_browser(self):
-        wins = find_windows(lambda t: t.endswith(self.a.browser_title))
+        want = self.a.browser_title.strip(" -").lower()
+        wins = find_windows(lambda t: t.endswith(self.a.browser_title) or
+                            f" - {want}" in t.lower())
         return wins[0] if wins else None
 
     # ---- behaviours ----------------------------------------------------
@@ -751,6 +781,40 @@ class Replayer:
         self.hotkey(self.Key.ctrl, "s")
         self.lines_to_save = self.rng.randint(12, 40)
         self.save_state()
+        self.checkpoint()
+
+    def checkpoint(self):
+        """After a save, compare the file on disk with what should be there by now.
+        On a difference, log exactly where and put the correct text back."""
+        if not self.cur_step_key or self.cur_lines is None:
+            return
+        self.sleep(0.6)
+        path = self.out / self.cur_step_key
+        expected = "".join(l + "\n" for l in self.cur_lines[:self.cur_line])
+        if self.cur_line >= len(self.cur_lines) - 1:
+            expected = "\n".join(self.cur_lines)          # whole file typed
+        try:
+            typed = path.read_bytes().decode("utf-8-sig").replace("\r\n", "\n")
+        except (OSError, UnicodeDecodeError):
+            return
+        if typed == expected:
+            return
+        self.log_difference(self.cur_step_key, expected, typed)
+        self.mismatches += 1
+        path.write_bytes(expected.encode("utf-8"))
+        self.sleep(1.5)                                    # VS Code reloads the file
+        if self.mode == "editor":
+            self.hotkey(self.Key.ctrl, self.Key.end)
+
+    def log_difference(self, key, expected, typed):
+        el, tl = expected.split("\n"), typed.split("\n")
+        for i in range(max(len(el), len(tl))):
+            e = el[i] if i < len(el) else "<missing>"
+            t = tl[i] if i < len(tl) else "<missing>"
+            if e != t:
+                self.log(f"MISMATCH in {key} line {i + 1} - corrected.\n"
+                         f"      expected: {e[:100]!r}\n      typed:    {t[:100]!r}")
+                return
 
     def time_is_up(self):
         return bool(self.a.max_hours) and \
@@ -807,34 +871,74 @@ class Replayer:
         return self.rng.uniform(self.a.lookup_min, self.a.lookup_max) * 60.0
 
     def make_query(self, rel: Path, typed_text: str):
-        lang = LANG_BY_EXT.get(rel.suffix.lower(), rel.suffix.lstrip(".") or "code")
+        """A search a developer would plausibly make while writing this file."""
+        r = self.rng
+        name = rel.name.lower()
+        lang = LANG_BY_EXT.get(rel.suffix.lower()) or SPECIAL_LANG.get(name) or \
+            (rel.suffix.lstrip(".") or name.lstrip(".") or "code")
+        cands = []
+
+        # imported packages / modules (Python, JS, Java, C#, C, PHP `use`)
         mods = []
         for rx in IMPORT_RES:
             mods += [m for m in rx.findall(typed_text) if m and not m.startswith(".")]
-        mods = [m.split("/")[0] if not m.startswith("@") else "/".join(m.split("/")[:2])
-                for m in mods]
-        mods = [m for m in dict.fromkeys(mods) if f"{lang} {m}" not in self.done_queries]
-        if mods:
-            m = self.rng.choice(mods)
-            key = f"{lang} {m}"
-            suffix = self.rng.choice(["documentation", "example", "tutorial", "usage"])
-            self.done_queries.add(key)
-            return f"{lang} {m} {suffix}"
-        names = re.findall(r"\b(?:def|function|class|func|fn)\s+([A-Za-z_]\w{3,})", typed_text)
-        if names:
-            return f"{lang} {self.rng.choice(names)} best practice"
-        return None
+        for m in dict.fromkeys(mods):
+            m = "/".join(m.split("/")[:2]) if m.startswith("@") else m.split("/")[0]
+            cands.append(f"{lang} {m} " + r.choice(["documentation", "example", "usage"]))
+
+        # built-in functions and classes being used (not ones the project defines)
+        if rel.suffix.lower() in CALL_LANGS:
+            for c in dict.fromkeys(re.findall(r"(?<![\w>$:.])([a-z_][a-z0-9_]{3,})\s*\(",
+                                              typed_text)):
+                if c in self.project_funcs or c in CALL_KEYWORDS:
+                    continue
+                if lang == "php" and self.php_builtins and c not in self.php_builtins:
+                    continue
+                if True:
+                    site = "php.net" if lang == "php" else "docs"
+                    cands.append(f"{lang} {c} " + r.choice(["manual", "example", site]))
+            for c in dict.fromkeys(re.findall(r"\bnew\s+\\?([A-Z]\w+)", typed_text)):
+                if c not in self.project_classes:
+                    cands.append(f"{lang} {c} class example")
+
+        if re.search(r"\bCREATE\s+TABLE\b", typed_text, re.I):
+            cands += ["mysql 8 create table foreign key on delete restrict",
+                      "mysql utf8mb4_unicode_ci vs utf8mb4_0900_ai_ci",
+                      "mysql composite index column order"]
+        if name in FILE_QUERIES:
+            cands += FILE_QUERIES[name]
+        if rel.suffix.lower() == ".md":
+            for h in re.findall(r"^#{1,3}\s+(.+)$", typed_text, re.M):
+                h = re.sub(r"[^\w\s-]", " ", h).strip()
+                if len(h) > 3:
+                    cands.append(f"{h[:50]} best practices")
+
+        fresh = [c for c in dict.fromkeys(cands) if c not in self.done_queries]
+        if not fresh:                         # always have something relevant
+            words = re.sub(r"[_\-.]+", " ", rel.stem).strip()
+            fresh = [q for q in (f"{lang} {words} best practice",
+                                 f"{lang} {words} example",
+                                 f"{lang} {rel.parent.name} {words}".strip())
+                     if q not in self.done_queries]
+        if not fresh:
+            return None
+        q = r.choice(fresh[:12])
+        self.done_queries.add(q)
+        return re.sub(r"\s+", " ", q)
 
     def browser_lookup(self, query):
-        hwnd = self.browser or self.find_browser()
+        hwnd = self.find_browser() or self.browser
         if not hwnd:
+            self.log(f"Browser lookup skipped: no Chrome window is open ({query})")
             return
         self.browser = hwnd
         self.mode = "browser"
         self.expected = hwnd
         if not focus_window(hwnd):
+            self.log("Browser lookup skipped: could not bring Chrome to the front")
             self.focus_editor()
             return
+        self.log(f"Browser lookup: {query}")
         self.sleep(0.6)
         self.move_mouse(*self.region_point(hwnd, 0.3, 0.7, 0.3, 0.7))
         self.hotkey(self.Key.ctrl, "t")
@@ -880,6 +984,10 @@ class Replayer:
         self.cur_label = f"[{file_no}/{file_count}] {rel.as_posix()}"
         self.cur_step_key = rel.as_posix()
         self.cur_line = start_line
+        self.cur_lines = lines
+        file_started = time.time()
+        self.log(f"Typing {rel.as_posix()} ({len(lines)} lines"
+                 + (f", resuming at line {start_line + 1}" if start_line else "") + ")")
         prefix = "".join(l + "\n" for l in lines[:start_line])
         self.open_file(rel, prefix)
         self.focus_editor()
@@ -907,9 +1015,12 @@ class Replayer:
                 self.hotkey(self.Key.shift, self.Key.home)
             elif kind == "pause":
                 self.sleep(delay)
+        self.cur_line = len(lines)            # whole file typed
         self.save()
         self.sleep(self.rng.uniform(1.0, 3.0) * self.a.think)
         self.verify(rel)
+        self.cur_lines = None
+        self.log(f"Finished {rel.as_posix()} in {fmt_dur(time.time() - file_started)}")
 
     def verify(self, rel):
         self.sleep(0.8)
@@ -920,9 +1031,9 @@ class Replayer:
         except (OSError, UnicodeDecodeError):
             typed = None
         expected = read_source(self.src / rel)
-        if typed != expected:
-            self.log(f"MISMATCH in {rel}: typed text differs from the source "
-                     f"(focus lost or editor auto-insert?). Restoring the original file.")
+        if typed is not None and typed != expected:
+            self.log_difference(rel.as_posix(), expected, typed)
+            self.mismatches += 1
         if dst.read_bytes() != src_bytes:
             dst.write_bytes(src_bytes)   # exact original bytes (line endings, BOM)
 
@@ -945,6 +1056,12 @@ class Replayer:
         todo = [f for f in files if f.as_posix() not in done]
         self.chars_total = sum(len(read_source(self.src / f).replace("\n", ""))
                                for f in todo)
+        for f in files:
+            if f.suffix.lower() in CALL_LANGS:
+                t = read_source(self.src / f)
+                self.project_funcs.update(re.findall(r"\bfunction\s+&?(\w+)\s*\(", t))
+                self.project_funcs.update(re.findall(r"\bdef\s+(\w+)\s*\(", t))
+                self.project_classes.update(re.findall(r"\b(?:class|interface|trait)\s+(\w+)", t))
         resume_line = {}
         if partial and partial.get("key") not in done:
             resume_line[partial["key"]] = int(partial.get("line", 0))
@@ -1034,6 +1151,45 @@ IMPORT_RES = [
     re.compile(r"""#include\s*[<"]([^>"]+)[>"]"""),                       # c/c++
     re.compile(r"^\s*use\s+([\w\\:]+)", re.M),                           # php/rust
 ]
+
+
+SPECIAL_LANG = {
+    ".gitignore": "gitignore", ".htaccess": "apache htaccess", "dockerfile": "dockerfile",
+    ".env.example": "dotenv", "makefile": "makefile", "composer.json": "composer",
+    "package.json": "npm",
+}
+CALL_LANGS = {".php", ".py", ".js", ".ts", ".jsx", ".tsx", ".rb", ".go"}
+CALL_KEYWORDS = {
+    "array", "isset", "empty", "unset", "list", "echo", "print", "exit", "die", "eval",
+    "require", "require_once", "include", "include_once", "function", "return", "elseif",
+    "foreach", "while", "switch", "match", "catch", "self", "static", "parent", "fn",
+    "range", "print", "len", "super", "this", "then", "else",
+}
+FILE_QUERIES = {
+    ".gitignore": ["gitignore template php project", "gitignore keep empty folder gitkeep"],
+    "composer.json": ["composer.json require php extensions ext-pdo_mysql",
+                      "composer autoload files without dependencies"],
+    ".htaccess": ["htaccess rewrite all requests to public index.php",
+                  "apache deny access to directory htaccess"],
+    ".env.example": ["php read .env file without composer", "env file APP_KEY base64 32 bytes"],
+    "dockerfile": ["dockerfile php 8.2 cli install pdo_mysql"],
+    "test.sh": ["bash set -euo pipefail explained", "docker run mysql tmpfs for tests"],
+    "readme.md": ["readme template for php project"],
+}
+
+
+def php_builtin_functions():
+    """PHP's own function names (asked from the installed php), or an empty set."""
+    php = shutil.which("php")
+    if not php:
+        return set()
+    try:
+        out = subprocess.run(
+            [php, "-r", 'echo implode("\\n", get_defined_functions()["internal"]);'],
+            capture_output=True, text=True, timeout=20).stdout
+        return set(out.split())
+    except (OSError, subprocess.TimeoutExpired):
+        return set()
 
 
 def fmt_dur(s):
