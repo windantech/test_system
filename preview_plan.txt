@@ -1,0 +1,537 @@
+# Build plan - typed in this order. Lines: '## title' = milestone,
+# 'run <command>' = run in the VS Code terminal, anything else = a file to type.
+
+## Project setup
+.gitignore
+.env.example
+composer.json
+.htaccess
+CLAUDE.md
+
+## Core: configuration, database layer, HTTP, router, layout, test harness
+bootstrap/helpers.php
+config/env.php
+config/app.php
+config/database.php
+config/features.php
+bootstrap/init.php
+db/connection.php
+db/query.php
+db/migrate.php
+scripts/generate_key.php
+scripts/migrate.php
+lib/http.php
+lib/router.php
+lib/crypto.php
+lib/forms.php
+DESIGN_SYSTEM.md
+lib/layout.php
+lib/coming_soon.php
+tests/lib/assert.php
+tests/run.php
+tests/unit/EnvLoaderTest.php
+tests/docker/Dockerfile
+scripts/test.sh
+run php -l bootstrap/init.php
+run php tests/run.php unit
+
+## 0001 - Foundation: organisation, people, configurable roles and permissions
+migrations/0001_foundation.php
+lib/audit.php
+lib/auth.php
+lib/authz.php
+lib/csv.php
+lib/evidence.php
+lib/mailer.php
+lib/notifications.php
+lib/options.php
+lib/rbac.php
+lib/rbac_catalogue.php
+lib/sidebar.php
+lib/workflow.php
+modules/admin/lib/admin.php
+modules/projects/lib/projects.php
+modules/admin/pages/audit.php
+modules/admin/pages/options.php
+modules/admin/pages/reference.php
+modules/admin/pages/retention.php
+modules/admin/pages/role_form.php
+modules/admin/pages/roles.php
+modules/admin/pages/user_form.php
+modules/admin/pages/user_link.php
+modules/admin/pages/user_roles.php
+modules/admin/pages/user_status.php
+modules/admin/pages/user_view.php
+modules/admin/pages/users.php
+modules/auth/pages/change.php
+modules/auth/pages/forgot.php
+modules/auth/pages/login.php
+modules/auth/pages/logout.php
+modules/auth/pages/profile.php
+modules/auth/pages/reset.php
+modules/evidence/pages/download.php
+modules/evidence/pages/remove.php
+modules/evidence/pages/upload.php
+modules/projects/pages/form.php
+modules/projects/pages/index.php
+modules/projects/pages/status.php
+modules/projects/pages/team.php
+modules/projects/pages/view.php
+scripts/backup.sh
+scripts/build-guide.js
+scripts/create_admin.php
+scripts/deploy_pull.sh
+scripts/restore_drill.sh
+scripts/seed.php
+tests/unit/MigrationStaticTest.php
+tests/unit/ResponseCodeStaticTest.php
+tests/unit/SecurityStaticTest.php
+tests/integration/AdminTest.php
+tests/integration/AuthTest.php
+tests/integration/AuthzTest.php
+tests/integration/MigrationsTest.php
+tests/integration/ProjectsTest.php
+tests/http/AppHttpTest.php
+tests/http/ScriptsTest.php
+tests/lib/fixtures.php
+tests/lib/http.php
+run php -l migrations/0001_foundation.php
+run php -l lib/audit.php
+run php -l lib/auth.php
+
+## 0002 - the organisation record, the twelve system roles from the brief (edita
+migrations/0002_organisation_roles_permissions.php
+run php -l migrations/0002_organisation_roles_permissions.php
+run php tests/run.php unit
+config/routes.php
+public/.htaccess
+public/index.php
+
+## Local preview: database, dev server and the first sign-in
+newfile .env
+APP_NAME="FPC Eval360"
+APP_ENV=development
+APP_DEBUG=true
+APP_URL=http://127.0.0.1:8080
+APP_TIMEZONE=Africa/Blantyre
+APP_KEY={{APP_KEY}}
+
+CLIENT_SLUG=fpc
+CLIENT_NAME="FPC"
+CLIENT_FULL_NAME="Future Planning for the Child"
+CLIENT_COUNTRY=MW
+CLIENT_CURRENCY=MWK
+
+DB_HOST=127.0.0.1
+DB_PORT=3307
+DB_NAME=fpc_dev
+DB_USER=root
+DB_PASS=devpass
+DB_CHARSET=utf8mb4
+
+SESSION_SECURE_COOKIE=false
+SESSION_IDLE_MIN=240
+SESSION_ABSOLUTE_HOURS=12
+
+RATE_LIMIT_LOGIN=5
+RATE_LIMIT_LOCKOUT_MINUTES=15
+MAIL_ENABLED=false
+
+STORAGE_BACKEND=local
+STORAGE_PATH=storage/uploads
+STORAGE_MAX_UPLOAD_MB=20
+LOG_LEVEL=debug
+endfile
+newfile .env.local
+# Machine-specific overrides of .env (git-ignored).
+endfile
+run 45 docker run -d --name fpc-dev-db --restart unless-stopped -p 3307:3306 -e MYSQL_ROOT_PASSWORD=devpass -e MYSQL_DATABASE=fpc_dev mysql:8.4
+run 60 until docker exec fpc-dev-db mysqladmin ping -h127.0.0.1 -uroot -pdevpass --silent; do sleep 3; done; echo database ready
+run 25 php scripts/migrate.php
+run 15 php scripts/seed.php reference
+restore run 20 docker start fpc-dev-db
+restore run 30 until docker exec fpc-dev-db mysqladmin ping -h127.0.0.1 -uroot -pdevpass --silent; do sleep 3; done; echo database ready
+serve php -S 127.0.0.1:8080 -t public public/index.php
+restore serve php -S 127.0.0.1:8080 -t public public/index.php
+browse /login
+run 10 out=$(php scripts/create_admin.php --email=admin@fpc.test --name="Dev Admin"); echo "$out"; echo "$out" | grep -o 'http[^ ]*' | clip
+browse clipboard | type Dev-Preview-2026! | tab | type Dev-Preview-2026! | enter
+browse /login?next=/profile | type admin@fpc.test | tab | type Dev-Preview-2026! | enter
+restore browse /login?next=/profile | type admin@fpc.test | tab | type Dev-Preview-2026! | enter
+run 10 docker exec fpc-dev-db mysql -uroot -pdevpass fpc_dev -e "INSERT IGNORE INTO user_roles (user_id, role_id, project_id) SELECT u.id, r.id, p.id FROM users u, roles r, projects p WHERE u.email = 'admin@fpc.test' AND r.role_key IN ('programs_manager', 'finance_officer', 'meal_officer', 'project_coordinator')"
+## 0003 - workplans and their planned activities (Phase 2)
+migrations/0003_workplans.php
+modules/fielddata/lib/fielddata.php
+modules/workplans/lib/workplans.php
+modules/workplans/pages/activity_delete.php
+modules/workplans/pages/activity_form.php
+modules/workplans/pages/calendar.php
+modules/workplans/pages/form.php
+modules/workplans/pages/index.php
+modules/workplans/pages/report_form.php
+modules/workplans/pages/report_status.php
+modules/workplans/pages/report_view.php
+modules/workplans/pages/revise.php
+modules/workplans/pages/status.php
+modules/workplans/pages/tasks_mine.php
+modules/workplans/pages/tasks_project.php
+modules/workplans/pages/view.php
+tests/integration/WorkplansTest.php
+tests/http/WorkplansHttpTest.php
+run php -l migrations/0003_workplans.php
+run php -l modules/fielddata/lib/fielddata.php
+run php -l modules/workplans/lib/workplans.php
+run 20 php scripts/migrate.php
+
+## 0004 - activity reports (Phase 2): what actually happened for a planned activ
+migrations/0004_activity_reports.php
+modules/workplans/lib/activity_reports.php
+modules/workplans/pages/reports.php
+tests/integration/ActivityReportsTest.php
+tests/http/ActivityReportsHttpTest.php
+run php -l migrations/0004_activity_reports.php
+run php -l modules/workplans/lib/activity_reports.php
+run php -l modules/workplans/pages/reports.php
+run 20 php scripts/migrate.php
+
+## 0005 - project budgets, expenditure and exchange rates (Phase 2)
+migrations/0005_finance.php
+modules/finance/lib/finance.php
+modules/finance/pages/budget_form.php
+modules/finance/pages/budget_revise.php
+modules/finance/pages/budget_status.php
+modules/finance/pages/budget_view.php
+modules/finance/pages/expenditure_form.php
+modules/finance/pages/expenditure_status.php
+modules/finance/pages/expenditure_view.php
+modules/finance/pages/expenditures.php
+modules/finance/pages/index.php
+modules/finance/pages/line_delete.php
+modules/finance/pages/line_form.php
+modules/finance/pages/project.php
+modules/finance/pages/rates.php
+tests/integration/FinanceTest.php
+tests/http/FinanceHttpTest.php
+run php -l migrations/0005_finance.php
+run php -l modules/finance/lib/finance.php
+run php -l modules/finance/pages/budget_form.php
+run 20 php scripts/migrate.php
+
+## 0006 - risk & issue register, follow-up actions, change requests (Phase 2)
+migrations/0006_registers_changes.php
+modules/registers/lib/registers.php
+modules/registers/pages/action_form.php
+modules/registers/pages/action_status.php
+modules/registers/pages/change_form.php
+modules/registers/pages/change_status.php
+modules/registers/pages/change_view.php
+modules/registers/pages/changes.php
+modules/registers/pages/index.php
+modules/registers/pages/register.php
+modules/registers/pages/risk_form.php
+modules/registers/pages/risk_review.php
+modules/registers/pages/risk_status.php
+modules/registers/pages/risk_view.php
+tests/integration/RegistersTest.php
+tests/http/RegistersHttpTest.php
+run php -l migrations/0006_registers_changes.php
+run php -l modules/registers/lib/registers.php
+run php -l modules/registers/pages/action_form.php
+run php tests/run.php unit
+run 20 php scripts/migrate.php
+
+## 0007 - results framework, indicators, targets and results (Phase 3)
+migrations/0007_results.php
+modules/dashboard/lib/performance.php
+modules/onboarding/lib/datasets.php
+modules/onboarding/lib/onboarding.php
+modules/quality/lib/quality.php
+modules/reporting/lib/reporting.php
+modules/results/lib/results.php
+modules/onboarding/pages/batch.php
+modules/onboarding/pages/index.php
+modules/onboarding/pages/source_download.php
+modules/onboarding/pages/sources.php
+modules/onboarding/pages/template.php
+modules/quality/pages/index.php
+modules/reporting/pages/export.php
+modules/reporting/pages/project.php
+modules/reporting/pages/templates.php
+modules/reporting/pages/view.php
+modules/results/pages/evaluations.php
+modules/results/pages/framework_form.php
+modules/results/pages/framework_revise.php
+modules/results/pages/framework_status.php
+modules/results/pages/framework_view.php
+modules/results/pages/import.php
+modules/results/pages/index.php
+modules/results/pages/indicator_delete.php
+modules/results/pages/indicator_form.php
+modules/results/pages/indicator_view.php
+modules/results/pages/node_delete.php
+modules/results/pages/node_form.php
+modules/results/pages/project.php
+modules/results/pages/result_form.php
+modules/results/pages/result_status.php
+modules/results/pages/result_view.php
+modules/results/pages/targets.php
+modules/results/pages/template.php
+modules/results/pages/visit_view.php
+modules/results/pages/visits.php
+tests/integration/AuthorizationMatrixTest.php
+tests/integration/PerformanceTest.php
+tests/integration/ResultsTest.php
+tests/http/PerformanceHttpTest.php
+tests/http/ResultsHttpTest.php
+run php -l migrations/0007_results.php
+run php -l modules/dashboard/lib/performance.php
+run php -l modules/onboarding/lib/datasets.php
+run 20 php scripts/migrate.php
+
+## 0008 - evidence files (Phase 3)
+migrations/0008_evidence.php
+tests/integration/EvidenceTest.php
+tests/http/EvidenceImportHttpTest.php
+run php -l migrations/0008_evidence.php
+run php tests/run.php unit
+run 20 php scripts/migrate.php
+
+## 0009 - Phase 4 foundation: dual-control permissions, time-limited direct gran
+migrations/0009_phase4_foundation.php
+modules/community/lib/community.php
+modules/instruments/lib/instruments.php
+modules/community/pages/_nav.php
+modules/community/pages/caregiver_form.php
+modules/community/pages/caregiver_view.php
+modules/community/pages/caregivers.php
+modules/community/pages/cbcc_form.php
+modules/community/pages/cbcc_view.php
+modules/community/pages/cbccs.php
+modules/community/pages/dashboard.php
+modules/community/pages/index.php
+modules/community/pages/structure_view.php
+modules/community/pages/structures.php
+modules/community/pages/visit_form.php
+modules/community/pages/visit_view.php
+modules/instruments/pages/assessment_form.php
+modules/instruments/pages/assessment_view.php
+modules/instruments/pages/form.php
+modules/instruments/pages/index.php
+modules/instruments/pages/view.php
+tests/integration/Phase4CommunityTest.php
+tests/http/Phase4AcceptanceHttpTest.php
+run php -l migrations/0009_phase4_foundation.php
+run php -l modules/community/lib/community.php
+run php -l modules/instruments/lib/instruments.php
+run 20 php scripts/migrate.php
+browse /projects
+browse /workplans
+browse /activity-reports
+browse /finance
+
+## 0010 - community scorecard cycles (Phase 4)
+migrations/0010_scorecards.php
+modules/scorecards/lib/scorecards.php
+modules/scorecards/pages/form.php
+modules/scorecards/pages/index.php
+modules/scorecards/pages/view.php
+run php -l migrations/0010_scorecards.php
+run php -l modules/scorecards/lib/scorecards.php
+run php -l modules/scorecards/pages/form.php
+run 20 php scripts/migrate.php
+browse /finance/rates
+browse /risks
+browse /changes
+browse /results
+
+## 0011 - beneficiary register, consent records and retention rules (Phase 4)
+migrations/0011_beneficiaries_consent_retention.php
+modules/beneficiaries/lib/beneficiaries.php
+modules/beneficiaries/pages/index.php
+modules/beneficiaries/pages/view.php
+tests/integration/Phase4PrivacyTest.php
+run php -l migrations/0011_beneficiaries_consent_retention.php
+run php -l modules/beneficiaries/lib/beneficiaries.php
+run php -l modules/beneficiaries/pages/index.php
+run 20 php scripts/migrate.php
+browse /admin/users
+browse /admin/roles
+browse /admin/reference
+browse /admin/audit
+
+## 0012 - safeguarding / child protection (Phase 4). NOT FOR LIVE DATA until FPC
+migrations/0012_safeguarding.php
+modules/safeguarding/lib/safeguarding.php
+modules/safeguarding/pages/access.php
+modules/safeguarding/pages/case_view.php
+modules/safeguarding/pages/index.php
+modules/safeguarding/pages/project.php
+modules/safeguarding/pages/stats.php
+scripts/safeguarding_mode.php
+tests/http/Phase4PrivacyHttpTest.php
+run php -l migrations/0012_safeguarding.php
+run php -l modules/safeguarding/lib/safeguarding.php
+run php -l modules/safeguarding/pages/access.php
+run php tests/run.php unit
+run 20 php scripts/migrate.php
+browse /admin/options
+browse /community
+browse /instruments
+browse /scorecards
+
+## 0013 - organisational capacity (Tilitonse-style maturity) and consultancy QA 
+migrations/0013_capacity_consultancy.php
+modules/capacity/lib/capacity.php
+modules/capacity/pages/consultancies.php
+modules/capacity/pages/consultancy_view.php
+modules/capacity/pages/consultants.php
+modules/capacity/pages/deliverable.php
+modules/capacity/pages/index.php
+modules/capacity/pages/org_view.php
+modules/capacity/pages/orgs.php
+run php -l migrations/0013_capacity_consultancy.php
+run php -l modules/capacity/lib/capacity.php
+run php -l modules/capacity/pages/consultancies.php
+run php tests/run.php unit
+run 20 php scripts/migrate.php
+browse /safeguarding
+browse /safeguarding/stats
+browse /capacity
+
+## 0014 - donor reporting (Phase 6): reporting calendar, versioned templates, re
+migrations/0014_reporting.php
+modules/reporting/pages/index.php
+modules/reporting/pages/template_view.php
+tests/integration/Phase56Test.php
+run php -l migrations/0014_reporting.php
+run php -l modules/reporting/pages/index.php
+run php -l modules/reporting/pages/template_view.php
+run php tests/run.php unit
+run 20 php scripts/migrate.php
+browse /reporting
+
+## 0015 - operational readiness (Phase 7): field-data import, notification log, 
+migrations/0015_operations.php
+modules/fielddata/pages/index.php
+scripts/notify.php
+tests/integration/Phase7Test.php
+tests/http/Phases567HttpTest.php
+run php -l migrations/0015_operations.php
+run php -l modules/fielddata/pages/index.php
+run php -l scripts/notify.php
+run 20 php scripts/migrate.php
+browse /quality
+
+## 0016 - real-data onboarding: a source-document registry and a staged import
+migrations/0016_onboarding.php
+modules/onboarding/lib/bulk.php
+modules/onboarding/lib/sources.php
+modules/onboarding/pages/batch_new.php
+modules/onboarding/pages/source.php
+modules/results/pages/evaluation_view.php
+scripts/onboarding_bulk_approve.php
+scripts/onboarding_bulk_stage.php
+scripts/onboarding_stage_package.sh
+scripts/onboarding_templates.php
+tests/integration/OnboardingBulkApproveTest.php
+tests/integration/OnboardingBulkTest.php
+tests/integration/OnboardingTest.php
+tests/http/OnboardingHttpTest.php
+run php -l migrations/0016_onboarding.php
+run php -l modules/onboarding/lib/bulk.php
+run php -l modules/onboarding/lib/sources.php
+run 20 php scripts/migrate.php
+browse /onboarding
+browse /onboarding/sources
+
+## 0017 - capacity domain scores (SOCSI) and proposed improvement actions
+migrations/0017_capacity_domains.php
+tests/integration/CapacityDomainsTest.php
+run php -l migrations/0017_capacity_domains.php
+run 20 php scripts/migrate.php
+
+## 0018 - task assignment within workplan activities
+migrations/0018_tasks.php
+modules/workplans/lib/tasks.php
+modules/workplans/pages/task_view.php
+tests/integration/TasksTest.php
+tests/http/TasksHttpTest.php
+run php -l migrations/0018_tasks.php
+run php -l modules/workplans/lib/tasks.php
+run php -l modules/workplans/pages/task_view.php
+run 20 php scripts/migrate.php
+browse /tasks
+
+## 0019 - indicator calculation rules
+migrations/0019_indicator_rules.php
+tests/integration/IndicatorRulesTest.php
+run php -l migrations/0019_indicator_rules.php
+run 20 php scripts/migrate.php
+
+## 0020 - MEAL registers: project monitoring visits, evaluations with management
+migrations/0020_meal_registers.php
+modules/dashboard/lib/inbox.php
+modules/results/lib/meal.php
+modules/dashboard/pages/home.php
+modules/dashboard/pages/performance.php
+modules/dashboard/pages/performance_project.php
+modules/dashboard/pages/switch_project.php
+modules/results/pages/lessons.php
+tests/integration/MealRegistersTest.php
+run php -l migrations/0020_meal_registers.php
+run php -l modules/dashboard/lib/inbox.php
+run php -l modules/results/lib/meal.php
+run 20 php scripts/migrate.php
+browse /
+browse /monitoring-visits
+browse /evaluations
+browse /lessons
+
+## 0021 - FPC operational modules: community-structure training and follow-up, s
+migrations/0021_fpc_modules.php
+tests/integration/FpcModulesTest.php
+tests/http/FpcModulesHttpTest.php
+run php -l migrations/0021_fpc_modules.php
+run 20 php scripts/migrate.php
+browse /performance
+browse /consultants
+
+## 0022 - data questionnaire: the answers FPC gives for information missing from
+migrations/0022_onboarding_questionnaire.php
+modules/onboarding/lib/questionnaire.php
+modules/onboarding/pages/questionnaire.php
+tests/integration/QuestionnaireTest.php
+tests/http/QuestionnaireHttpTest.php
+run php -l migrations/0022_onboarding_questionnaire.php
+run php -l modules/onboarding/lib/questionnaire.php
+run php -l modules/onboarding/pages/questionnaire.php
+run php tests/run.php unit
+run 20 php scripts/migrate.php
+browse /onboarding/questionnaire
+
+## Wiring: routes and front controller
+run php -l public/index.php
+run php tests/run.php unit
+run bash scripts/test.sh
+
+## Documentation
+docs/ARCHITECTURE.md
+docs/DATABASE_DESIGN.md
+docs/DEPLOYMENT.md
+docs/FINAL_COMPLETION_CHECKLIST.md
+docs/FPC_IMPORT_MAPPING.md
+docs/FPC_POLICY_DECISIONS_PENDING.md
+docs/IMPLEMENTATION_AUDIT.md
+docs/IMPLEMENTATION_PLAN.md
+docs/IMPLEMENTATION_STATUS.md
+docs/ONBOARDING.md
+docs/OPERATIONS.md
+docs/REQUIREMENTS_MATRIX.md
+docs/SECURITY_REVIEW.md
+docs/SOURCE_RECONCILIATION.md
+docs/TESTING.md
+docs/USER_GUIDE.md
+README.md
+
+## Finished system: a last look around
+browse /

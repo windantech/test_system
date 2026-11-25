@@ -88,6 +88,36 @@ run 300 bash scripts/test.sh           <- the same, waiting 300 seconds for it t
 A `run` step is skipped and logged if its program, such as `php`, is not installed. Files the
 plan doesn't mention are typed at the end.
 
+## Live preview of the app being built
+
+`preview_plan.txt` (the default in `SETTINGS.bat`) is the build plan plus a running app.
+Once the sign-in code exists (about 90 files in), the tool:
+
+1. types a development `.env`, starts MySQL in Docker and runs the migrations;
+2. starts PHP's web server in its own terminal;
+3. opens the login page in Chrome, creates the admin in the terminal, pastes the
+   one-time link into Chrome, sets the password and signs in;
+4. after every later feature, runs the new migration and opens that feature's pages in Chrome.
+
+Extra plan steps used for this:
+
+```
+newfile .env ... endfile        type a file that is not in the source
+serve <command>                 start a server in its own terminal
+browse /path | type x | tab | enter      use the app in Chrome
+restore <step>                  redo at the start of every later session
+```
+
+Every preview was checked before recording. `check_preview.py` rebuilds the project step
+by step on separate ports, really runs each command and loads each page:
+
+```
+python check_preview.py <source> preview_plan.txt <empty work folder> --exclude ...
+```
+
+In the last check, all 35 visits loaded without errors. To regenerate the plan, run
+`add_preview.py` after `check_preview.py --probe`.
+
 ## Sessions
 
 - `--max-hours 3` stops the session after 3 hours, at the end of the current line.

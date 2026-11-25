@@ -5,6 +5,10 @@ rem OUT    = an EMPTY folder where it will be rebuilt on camera
 set "SOURCE=%USERPROFILE%\Documents\folder"
 set "OUT=%USERPROFILE%\Documents\folder_rebuilt"
 
+rem Build plan:  preview_plan.txt = also runs the app and uses it in Chrome as it is built
+rem              build_plan.txt   = code and tests only
+set "PLAN=preview_plan.txt"
+
 rem Hours per recording session
 set "HOURS=3"
 

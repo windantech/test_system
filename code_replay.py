@@ -120,18 +120,35 @@ def build_plan(src: Path, excludes, max_kb, order_file, max_line=MAX_LINE_LEN,
     if not order_file:
         return [("type", p.as_posix(), p) for p in typed_paths], copied
 
-    # Plan file:  '## title' = milestone,  'run [seconds] <command>' = terminal
-    # command,  any other non-comment line = a file to type.
+    # Plan file lines:
+    #   ## title                      milestone
+    #   run [seconds] <command>       type a command into the VS Code terminal
+    #   serve <command>               start a long-running server in its own terminal
+    #   browse <url|path|clipboard> [| action ...]   use the app in Chrome
+    #   restore <step>                re-do <step> at the start of every later session
+    #   newfile <path> ... endfile    type a file that is not in the source (e.g. .env)
+    #   anything else                 a source file to type
     index = {p.as_posix(): p for p in typed_paths}
     used, steps = set(), []
-    for n, line in enumerate(Path(order_file).read_text(encoding="utf-8").splitlines(), 1):
-        line = line.strip()
+    newfile = None
+    for n, raw in enumerate(Path(order_file).read_text(encoding="utf-8").splitlines(), 1):
+        if newfile is not None:
+            if raw.strip() == "endfile":
+                steps.append(("newfile", f"newfile#{newfile[2]}", (newfile[0], "\n".join(newfile[1]) + "\n")))
+                newfile = None
+            else:
+                newfile[1].append(raw)
+            continue
+        line = raw.strip()
         if line.startswith("## "):
             steps.append(("milestone", None, line[3:].strip()))
         elif not line or line.startswith("#"):
             continue
-        elif line.startswith("run "):
-            steps.append(("run", f"run#{n}", line[4:].strip()))
+        elif line.startswith("newfile "):
+            newfile = (line[8:].strip(), [], n)
+        elif line.startswith(("run ", "serve ", "browse ", "restore ")):
+            kind, rest = line.split(None, 1)
+            steps.append((kind, f"{kind}#{n}", rest.strip()))
         else:
             k = Path(line).as_posix()
             if k in index and k not in used:
@@ -151,13 +168,20 @@ _docker_ok = None
 def command_unavailable(cmd):
     """Why a terminal step cannot run here, or None if it can."""
     global _docker_ok
-    prog = cmd.split()[0]
-    if prog == "bash":
-        if not GIT_BASH.exists():
-            return "Git Bash is not installed"
-    elif not shutil.which(prog):
-        return f"{prog} is not installed"
-    if "test.sh" in cmd and "unit" not in cmd.split():
+    first = cmd.split()[0]
+    if first in ("until", "while", "for", "if", "do", "{", "(") or "=" in first:
+        # a shell construct: check the programs it uses instead
+        progs = [p for p in ("php", "docker", "git", "node", "npm", "python")
+                 if re.search(rf"(^|[\s;($|]){p}\b", cmd)]
+    else:
+        progs = [first]
+    for prog in progs:
+        if prog == "bash":
+            if not GIT_BASH.exists():
+                return "Git Bash is not installed"
+        elif not shutil.which(prog):
+            return f"{prog} is not installed"
+    if "docker" in progs or ("test.sh" in cmd and "unit" not in cmd.split()):
         if _docker_ok is None:
             try:
                 _docker_ok = subprocess.run(["docker", "info"], capture_output=True,
@@ -524,7 +548,10 @@ class Replayer:
         self.cur_step_key = None      # file being typed (for mid-file resume)
         self.cur_line = 0
         self.cur_lines = None
+        self.cur_path = Path(".")
         self.mismatches = 0
+        self.preview_tab = False      # Chrome tab used to preview the app
+        self.app_key = None
         self.project_funcs = set()    # names the project defines (not worth searching)
         self.project_classes = set()
         self.php_builtins = php_builtin_functions()
@@ -709,11 +736,14 @@ class Replayer:
     def load_state(self):
         if self.a.resume and self.state_file.exists():
             st = json.loads(self.state_file.read_text(encoding="utf-8"))
+            self.app_key = st.get("app_key")
             return set(st.get("done", [])), st.get("partial")
         return set(), None
 
     def save_state(self):
         st: dict = {"done": sorted(self.done)}
+        if self.app_key:
+            st["app_key"] = self.app_key
         if self.cur_step_key:
             st["partial"] = {"key": self.cur_step_key, "line": self.cur_line}
         self.state_file.write_text(json.dumps(st, indent=1), encoding="utf-8")
@@ -789,7 +819,7 @@ class Replayer:
         if not self.cur_step_key or self.cur_lines is None:
             return
         self.sleep(0.6)
-        path = self.out / self.cur_step_key
+        path = self.out / self.cur_path
         expected = "".join(l + "\n" for l in self.cur_lines[:self.cur_line])
         if self.cur_line >= len(self.cur_lines) - 1:
             expected = "\n".join(self.cur_lines)          # whole file typed
@@ -799,7 +829,7 @@ class Replayer:
             return
         if typed == expected:
             return
-        self.log_difference(self.cur_step_key, expected, typed)
+        self.log_difference(self.cur_path.as_posix(), expected, typed)
         self.mismatches += 1
         path.write_bytes(expected.encode("utf-8"))
         self.sleep(1.5)                                    # VS Code reloads the file
@@ -844,6 +874,145 @@ class Replayer:
                             t + (b - t) * self.rng.uniform(0.75, 0.9))
         self.sleep(self.rng.uniform(3.0, 9.0) * self.a.think)
         self.focus_editor()
+
+    def serve_command(self, cmd):
+        """Start a long-running server (e.g. php -S) in a terminal of its own, then
+        open a fresh terminal so later commands do not land in the server's."""
+        missing = command_unavailable(cmd)
+        if missing:
+            self.log(f"Skipped server step ({missing}): {cmd}")
+            return
+        m = re.search(r"(?:-S\s+|--port[= ]|:)(?:[\w.]+:)?(\d{2,5})\b", cmd)
+        if m:
+            import socket
+            try:
+                socket.create_connection(("127.0.0.1", int(m.group(1))), 0.5).close()
+                self.log(f"Server already running on port {m.group(1)}; not starting it again")
+                return
+            except OSError:
+                pass
+        self.log(f"Starting server: {cmd}")
+        self.cur_label = f"[server] {cmd}"
+        self.progress(0, 0)
+        self.focus_editor()
+        self.sleep(self.rng.uniform(0.8, 2.0) * self.a.think)
+        self.hotkey(self.Key.ctrl, self.Key.shift, "`")      # new terminal
+        self.mode = "terminal"
+        self.sleep(self.rng.uniform(2.0, 3.5))
+        self.type_plain(cmd, speed=1.3)
+        self.sleep(self.rng.uniform(0.3, 0.9))
+        self.tap(self.Key.enter)
+        self.sleep(self.rng.uniform(3.0, 5.0))
+        self.hotkey(self.Key.ctrl, self.Key.shift, "`")      # a terminal for commands
+        self.sleep(self.rng.uniform(1.5, 2.5))
+        self.focus_editor()
+
+    def browse(self, spec):
+        """Use the app in Chrome:  <url | /path | clipboard> [| action ...]
+        actions: type <text>, tab, enter, esc, wait <s>, scroll, look, nolook"""
+        parts = [p.strip() for p in spec.split("|")]
+        target, actions = parts[0], parts[1:]
+        hwnd = self.find_browser() or self.browser
+        if not hwnd:
+            self.log(f"Preview skipped: no Chrome window is open ({target})")
+            return
+        self.browser = hwnd
+        self.mode = "browser"
+        self.expected = hwnd
+        if not focus_window(hwnd):
+            self.log("Preview skipped: could not bring Chrome to the front")
+            self.focus_editor()
+            return
+        url = target if "://" in target or target == "clipboard" else \
+            self.a.app_url.rstrip("/") + "/" + target.lstrip("/")
+        self.log(f"Preview in Chrome: {url} " + (" | ".join(actions) if actions else ""))
+        self.sleep(0.6)
+        self.move_mouse(*self.region_point(hwnd, 0.3, 0.7, 0.3, 0.7))
+        if not self.preview_tab:
+            self.hotkey(self.Key.ctrl, "t")
+            self.preview_tab = True
+        else:
+            self.hotkey(self.Key.ctrl, "l")
+        self.sleep(self.rng.uniform(0.5, 1.0))
+        if url == "clipboard":
+            self.hotkey(self.Key.ctrl, "v")
+        else:
+            self.type_plain(url, speed=1.5)
+        self.sleep(self.rng.uniform(0.3, 0.8))
+        self.tap(self.Key.enter)
+        self.sleep(self.rng.uniform(2.5, 4.0))
+        look = True
+        for act in actions:
+            word, _, arg = act.partition(" ")
+            if word == "type":
+                self.sleep(self.rng.uniform(0.5, 1.5))
+                self.hotkey(self.Key.ctrl, "a")       # replace anything Chrome auto-filled
+                self.type_plain(arg, speed=1.2)
+            elif word in ("tab", "enter", "esc"):
+                self.sleep(self.rng.uniform(0.3, 0.9))
+                self.tap({"tab": self.Key.tab, "enter": self.Key.enter,
+                          "esc": self.Key.esc}[word])
+                if word == "enter":
+                    self.sleep(self.rng.uniform(2.0, 3.5))
+            elif word == "wait":
+                self.sleep(float(arg or 2))
+            elif word in ("scroll", "look"):
+                self.look_at_page(hwnd)
+            elif word == "nolook":
+                look = False
+        if look:
+            self.look_at_page(hwnd)
+        self.move_mouse(*self.editor_point())
+        self.focus_editor()
+
+    def look_at_page(self, hwnd):
+        """Read the page: move around it, scroll down and back up."""
+        if self.a.no_mouse:
+            self.sleep(self.rng.uniform(3.0, 6.0) * self.a.think)
+            return
+        notches = 0
+        for _ in range(self.rng.randint(2, 4)):
+            self.move_mouse(*self.region_point(hwnd, 0.2, 0.8, 0.25, 0.85))
+            self.sleep(self.rng.uniform(1.0, 3.0) * self.a.think)
+            n = self.rng.randint(2, 5)
+            self.scroll(-n)
+            notches += n
+            self.sleep(self.rng.uniform(1.5, 4.0) * self.a.think)
+        self.scroll(notches)
+        self.sleep(self.rng.uniform(1.0, 2.5) * self.a.think)
+
+    def do_step(self, kind, val, key, file_no, n_files, resume_line):
+        """Run one non-milestone plan step; returns the updated file counter."""
+        if kind == "run":
+            self.run_command(val)
+        elif kind == "serve":
+            self.serve_command(val)
+        elif kind == "browse":
+            if not self.a.no_browser:
+                self.browse(val)
+        elif kind == "newfile":
+            path, content = val
+            content = content.replace("{{APP_KEY}}", self.get_app_key())
+            file_no += 1
+            self.type_file(Path(path), content, file_no, n_files,
+                           resume_line.pop(key, 0), key=key, content=content)
+            self.cur_step_key = None
+        else:
+            file_no += 1
+            self.type_file(val, read_source(self.src / val), file_no, n_files,
+                           resume_line.pop(key, 0))
+            self.cur_step_key = None
+            if not self.a.no_mouse and self.rng.random() < 0.5:
+                self.idle_mouse()
+            self.sleep(self.rng.uniform(3.0, 10.0) * self.a.think * self.t.scale)
+        return file_no
+
+    def get_app_key(self):
+        if not self.app_key:
+            import base64
+            self.app_key = "base64:" + base64.b64encode(os.urandom(32)).decode()
+            self.save_state()
+        return self.app_key
 
     def review_scroll(self):
         self.move_mouse(*self.editor_point())
@@ -979,10 +1148,12 @@ class Replayer:
 
     # ---- main loop -----------------------------------------------------
 
-    def type_file(self, rel: Path, text: str, file_no, file_count, start_line=0):
+    def type_file(self, rel: Path, text: str, file_no, file_count, start_line=0,
+                  key=None, content=None):
         lines = text.split("\n")
         self.cur_label = f"[{file_no}/{file_count}] {rel.as_posix()}"
-        self.cur_step_key = rel.as_posix()
+        self.cur_step_key = key or rel.as_posix()
+        self.cur_path = rel
         self.cur_line = start_line
         self.cur_lines = lines
         file_started = time.time()
@@ -1018,19 +1189,19 @@ class Replayer:
         self.cur_line = len(lines)            # whole file typed
         self.save()
         self.sleep(self.rng.uniform(1.0, 3.0) * self.a.think)
-        self.verify(rel)
+        self.verify(rel, content)
         self.cur_lines = None
         self.log(f"Finished {rel.as_posix()} in {fmt_dur(time.time() - file_started)}")
 
-    def verify(self, rel):
+    def verify(self, rel, content=None):
         self.sleep(0.8)
-        src_bytes = (self.src / rel).read_bytes()
+        src_bytes = (self.src / rel).read_bytes() if content is None else content.encode("utf-8")
         dst = self.out / rel
         try:
             typed = dst.read_bytes().decode("utf-8-sig").replace("\r\n", "\n")
         except (OSError, UnicodeDecodeError):
             typed = None
-        expected = read_source(self.src / rel)
+        expected = read_source(self.src / rel) if content is None else content
         if typed is not None and typed != expected:
             self.log_difference(rel.as_posix(), expected, typed)
             self.mismatches += 1
@@ -1089,6 +1260,13 @@ class Replayer:
         self.started = time.time()
         file_no = len(files) - len(todo)
         try:
+            # A resumed session first restores what an earlier one set up
+            # (database container, dev server, signed-in browser).
+            for kind, key, val in steps:
+                if kind == "restore" and key in done:
+                    rk, _, rv = val.partition(" ")
+                    self.log(f"Restoring from the last session: {val}")
+                    self.do_step(rk, rv.strip(), key + ":r", file_no, len(files), {})
             for kind, key, val in steps:
                 if kind == "milestone":
                     self.log(f"== {val}")
@@ -1098,16 +1276,8 @@ class Replayer:
                 if self.time_is_up():
                     self.log(f"Session time limit of {self.a.max_hours:g} h reached.")
                     raise Stopped()
-                if kind == "run":
-                    self.run_command(val)
-                else:
-                    file_no += 1
-                    self.type_file(val, read_source(self.src / val), file_no, len(files),
-                                   resume_line.pop(key, 0))
-                    self.cur_step_key = None
-                    if not self.a.no_mouse and self.rng.random() < 0.5:
-                        self.idle_mouse()
-                    self.sleep(self.rng.uniform(3.0, 10.0) * self.a.think * self.t.scale)
+                if kind != "restore":       # restore lines only act in later sessions
+                    file_no = self.do_step(kind, val, key, file_no, len(files), resume_line)
                 done.add(key)
                 self.save_state()
         except Stopped:
@@ -1118,7 +1288,7 @@ class Replayer:
             except Exception:
                 pass
             n_done = sum(1 for f in files if f.as_posix() in done)
-            where = f", stopped inside {self.cur_step_key} at line {self.cur_line + 1}" \
+            where = f", stopped inside {self.cur_path.as_posix()} at line {self.cur_line + 1}" \
                 if self.cur_step_key else ""
             print(f"\nStopped after {fmt_dur(time.time() - self.started)}. "
                   f"{n_done}/{len(files)} files done{where}. "
@@ -1220,6 +1390,8 @@ def main():
     p.add_argument("--browser-title", default=" - Google Chrome",
                    help="suffix of the browser window title (default ' - Google Chrome')")
     p.add_argument("--no-browser", action="store_true", help="never switch to the browser")
+    p.add_argument("--app-url", default="http://127.0.0.1:8080",
+                   help="where the rebuilt app is served, for 'browse /path' steps")
     p.add_argument("--no-mouse", action="store_true", help="no scrolling/clicking around")
     p.add_argument("--exclude", action="append", default=[],
                    help="glob of files/folders to skip, e.g. --exclude 'docs/*' (repeatable)")
@@ -1269,10 +1441,18 @@ def main():
         for kind, _, v in steps:
             if kind == "milestone":
                 print(f"\n  == {v}")
-            elif kind == "run":
-                why = command_unavailable(parse_run(v)[1])
+            elif kind in ("run", "serve"):
+                cmd = parse_run(v)[1] if kind == "run" else v
+                why = command_unavailable(cmd)
                 note = f"   (would be skipped: {why})" if why else ""
-                print(f"        $ {parse_run(v)[1]}{note}")
+                print(f"        $ {cmd}{'   [server]' if kind == 'serve' else ''}{note}")
+            elif kind == "browse":
+                print(f"        [Chrome] {v}")
+            elif kind == "restore":
+                print(f"        [next sessions start with] {v}")
+            elif kind == "newfile":
+                i += 1
+                print(f"  {i:4d}. {v[0]}   (new file, not from the source)")
             else:
                 i += 1
                 print(f"  {i:4d}. {v.as_posix()}")
