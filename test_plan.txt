@@ -1,0 +1,8 @@
+﻿# Short test: a few small files from the project, then real checks in the terminal.
+## Test run
+composer.json
+config/database.php
+config/features.php
+run php -l config/database.php
+run php -l config/features.php
+
