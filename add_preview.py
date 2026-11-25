@@ -21,7 +21,8 @@ PASSWORD = "Dev-Preview-2026!"
 LOGIN = f"/login?next=/profile | type {EMAIL} | tab | type {PASSWORD} | enter"
 PROBE = PLAN_OUT.with_suffix(".probe.json")     # written by check_preview.py --probe
 WIRING = ["config/routes.php", "public/.htaccess", "public/index.php"]
-FOUNDATION_END = "## 0002"          # preview starts once users and roles exist
+# the milestone after which the preview starts (once sign-in can work)
+FOUNDATION_END = sys.argv[4] if len(sys.argv) > 4 else "## 0002"
 
 ENV = f"""APP_NAME="FPC Eval360"
 APP_ENV=development
