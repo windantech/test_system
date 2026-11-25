@@ -1,56 +1,32 @@
-﻿# TEST: sign-in files are written instantly (--skip-to), then the live preview runs on screen.
-# Login-first build plan: sign-in is built and working first, then each feature.
-
-## Sign-in: configuration, database, router, layout and authentication
-.gitignore
-.env.example
-composer.json
-.htaccess
-bootstrap/helpers.php
-config/env.php
-config/app.php
-config/database.php
-config/features.php
-bootstrap/init.php
-db/connection.php
-db/query.php
-db/migrate.php
-lib/http.php
-lib/router.php
-lib/crypto.php
-lib/forms.php
-lib/layout.php
-lib/audit.php
-lib/auth.php
-lib/authz.php
-lib/mailer.php
-lib/notifications.php
-lib/rbac.php
-lib/rbac_catalogue.php
-lib/sidebar.php
-lib/workflow.php
-migrations/0001_foundation.php
-migrations/0002_organisation_roles_permissions.php
-modules/admin/lib/admin.php
-modules/auth/pages/change.php
-modules/auth/pages/forgot.php
-modules/auth/pages/login.php
-modules/auth/pages/logout.php
-modules/auth/pages/profile.php
-modules/auth/pages/reset.php
-modules/dashboard/lib/inbox.php
-scripts/generate_key.php
-scripts/migrate.php
-scripts/create_admin.php
-scripts/seed.php
-run php -l lib/auth.php
-run php -l modules/auth/pages/login.php
-config/routes.php
-public/.htaccess
-public/index.php
-
-## Local preview: database, dev server and the first sign-in
-newfile .env
+﻿# TEST: pre-load + sign-in files written instantly (--skip-to), then the live part runs on screen.
+## Pre-loaded setup (placed before recording, not typed)
+preload .env.example
+preload .gitignore
+preload composer.json
+preload .htaccess
+preload public/.htaccess
+preload config/app.php
+preload config/database.php
+preload config/env.php
+preload config/features.php
+preload config/routes.php
+preload tests/fixtures/onboarding/README.md
+preload tests/fixtures/onboarding/TEST_FIXTURE_budget_lines.csv
+preload tests/fixtures/onboarding/TEST_FIXTURE_capacity_interventions.csv
+preload tests/fixtures/onboarding/TEST_FIXTURE_capacity_plan.csv
+preload tests/fixtures/onboarding/TEST_FIXTURE_capacity_scores.csv
+preload tests/fixtures/onboarding/TEST_FIXTURE_indicator_targets.csv
+preload tests/fixtures/onboarding/TEST_FIXTURE_indicators.csv
+preload tests/fixtures/onboarding/TEST_FIXTURE_results_framework.csv
+preload tests/fixtures/onboarding/TEST_FIXTURE_results_framework_conflicting.csv
+preload tests/fixtures/onboarding/TEST_FIXTURE_results_framework_errors.csv
+preload tests/fixtures/onboarding/TEST_FIXTURE_source_document.txt
+preload tests/fixtures/onboarding/TEST_FIXTURE_synthetic_case.csv
+preload storage/cache/.gitkeep
+preload storage/exports/.gitkeep
+preload storage/logs/.gitkeep
+preload storage/uploads/.gitkeep
+preloadfile .env
 APP_NAME="FPC Eval360"
 APP_ENV=development
 APP_DEBUG=true
@@ -84,11 +60,53 @@ STORAGE_PATH=storage/uploads
 STORAGE_MAX_UPLOAD_MB=20
 LOG_LEVEL=debug
 endfile
-newfile .env.local
+preloadfile .env.local
 # Machine-specific overrides of .env (git-ignored).
 endfile
+
+## Sign-in: configuration, database, router, layout and authentication
+bootstrap/helpers.php
+bootstrap/init.php
+db/connection.php
+db/query.php
+db/migrate.php
+lib/http.php
+lib/router.php
+lib/crypto.php
+lib/forms.php
+lib/layout.php
+lib/audit.php
+lib/auth.php
+lib/authz.php
+lib/mailer.php
+lib/notifications.php
+lib/rbac.php
+lib/rbac_catalogue.php
+lib/sidebar.php
+lib/workflow.php
+migrations/0001_foundation.php
+migrations/0002_organisation_roles_permissions.php
+modules/admin/lib/admin.php
+modules/auth/pages/change.php
+modules/auth/pages/forgot.php
+modules/auth/pages/login.php
+modules/auth/pages/logout.php
+modules/auth/pages/profile.php
+modules/auth/pages/reset.php
+modules/dashboard/lib/inbox.php
+public/index.php
+scripts/generate_key.php
+scripts/migrate.php
+scripts/create_admin.php
+scripts/seed.php
+run php -l lib/auth.php
+run php -l modules/auth/pages/login.php
+
+## Development environment: MySQL database in Docker
 run 45 docker run -d --name fpc-dev-db --restart unless-stopped -p 3307:3306 -e MYSQL_ROOT_PASSWORD=devpass -e MYSQL_DATABASE=fpc_dev mysql:8.4
 run 60 until docker exec fpc-dev-db mysqladmin ping -h127.0.0.1 -uroot -pdevpass --silent; do sleep 3; done; echo database ready
+
+## First run: migrations, dev server and signing in
 run 25 php scripts/migrate.php
 run 15 php scripts/seed.php reference
 serve php -S 127.0.0.1:8080 -t public public/index.php
@@ -97,3 +115,4 @@ run 10 out=$(php scripts/create_admin.php --email=admin@fpc.test --name="Dev Adm
 browse clipboard | type Dev-Preview-2026! | tab | type Dev-Preview-2026! | enter
 browse /login?next=/profile | type admin@fpc.test | tab | type Dev-Preview-2026! | enter
 run 10 docker exec fpc-dev-db mysql -uroot -pdevpass fpc_dev -e "INSERT IGNORE INTO user_roles (user_id, role_id, project_id) SELECT u.id, r.id, p.id FROM users u, roles r, projects p WHERE u.email = 'admin@fpc.test' AND r.role_key IN ('programs_manager', 'finance_officer', 'meal_officer', 'project_coordinator')"
+

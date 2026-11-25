@@ -134,7 +134,9 @@ def build_plan(src: Path, excludes, max_kb, order_file, max_line=MAX_LINE_LEN,
     for n, raw in enumerate(Path(order_file).read_text(encoding="utf-8").splitlines(), 1):
         if newfile is not None:
             if raw.strip() == "endfile":
-                steps.append(("newfile", f"newfile#{newfile[2]}", (newfile[0], "\n".join(newfile[1]) + "\n")))
+                kind = "preloadfile" if newfile[3] else "newfile"
+                steps.append((kind, f"{kind}#{newfile[2]}",
+                              (newfile[0], "\n".join(newfile[1]) + "\n")))
                 newfile = None
             else:
                 newfile[1].append(raw)
@@ -144,8 +146,18 @@ def build_plan(src: Path, excludes, max_kb, order_file, max_line=MAX_LINE_LEN,
             steps.append(("milestone", None, line[3:].strip()))
         elif not line or line.startswith("#"):
             continue
-        elif line.startswith("newfile "):
-            newfile = (line[8:].strip(), [], n)
+        elif line.startswith(("newfile ", "preloadfile ")):
+            word, path = line.split(None, 1)
+            newfile = (path.strip(), [], n, word == "preloadfile")
+        elif line.startswith("preload "):
+            # a source file placed instantly before recording (setup/config), not typed
+            k = Path(line[8:].strip()).as_posix()
+            if k in index and k not in used:
+                steps.append(("preload", f"preload#{k}", index[k]))
+                used.add(k)
+            elif (src / k).is_file() and k not in used:
+                steps.append(("preload", f"preload#{k}", Path(k)))
+                used.add(k)
         elif line.startswith(("run ", "serve ", "browse ", "restore ")):
             kind, rest = line.split(None, 1)
             steps.append((kind, f"{kind}#{n}", rest.strip()))
@@ -551,6 +563,7 @@ class Replayer:
         self.cur_path = Path(".")
         self.mismatches = 0
         self.preview_tab = False      # Chrome tab used to preview the app
+        self.opened_any = False
         self.app_key = None
         self.project_funcs = set()    # names the project defines (not worth searching)
         self.project_classes = set()
@@ -988,12 +1001,12 @@ class Replayer:
         return text
 
     def fast_forward(self, kind, val):
-        """--skip-to: put a file in place without typing it (tests only)."""
-        if kind == "type":
+        """Put a file in place without typing it: 'preload' steps, and --skip-to tests."""
+        if kind in ("type", "preload"):
             dst = self.out / val
             dst.parent.mkdir(parents=True, exist_ok=True)
             dst.write_bytes((self.src / val).read_bytes())
-        elif kind == "newfile":
+        elif kind in ("newfile", "preloadfile"):
             path, content = val
             dst = self.out / path
             dst.parent.mkdir(parents=True, exist_ok=True)
@@ -1185,6 +1198,11 @@ class Replayer:
         prefix = "".join(l + "\n" for l in lines[:start_line])
         self.open_file(rel, prefix)
         self.focus_editor()
+        if not self.opened_any:
+            # a freshly opened VS Code window is still loading; let it settle first
+            self.opened_any = True
+            self.sleep(5.0)
+            self.focus_editor()
         for kind, arg, delay in file_events(text, self.t, start_line):
             if kind == "line":
                 self.cur_line = arg
@@ -1263,6 +1281,16 @@ class Replayer:
             est = estimate_seconds(self.src, todo, self.a.wpm, self.a.think, self.a.typos)
             self.t.scale = max(0.1, self.a.target_hours * 3600.0 / est)
             print(f"Pacing scaled x{self.t.scale:.2f} to fill about {self.a.target_hours} h.")
+
+        # Pre-loaded setup files go in before VS Code opens and before recording starts.
+        pre = [(k, key, v) for k, key, v in steps
+               if k in ("preload", "preloadfile") and key not in done]
+        for k, key, v in pre:
+            self.fast_forward(k, v)
+            done.add(key)
+        if pre:
+            self.save_state()
+            print(f"Pre-loaded {len(pre)} setup files (not typed).")
 
         self.vscode = self.find_vscode() or self.launch_vscode()
         self.browser = None if self.a.no_browser else self.find_browser()
@@ -1491,6 +1519,10 @@ def main():
             elif kind == "newfile":
                 i += 1
                 print(f"  {i:4d}. {v[0]}   (new file, not from the source)")
+            elif kind == "preload":
+                print(f"        [pre-loaded, not typed] {v.as_posix()}")
+            elif kind == "preloadfile":
+                print(f"        [pre-loaded, not typed] {v[0]}")
             else:
                 i += 1
                 print(f"  {i:4d}. {v.as_posix()}")

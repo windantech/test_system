@@ -1,0 +1,1287 @@
+{
+ "Development environment: MySQL database in Docker|docker run -d --name fpc-dev-db --restart unless-stopped -p 3307:3306 -e MYSQL_ROOT_PASSWORD=devpass -e MYSQL_DATABASE=fpc_dev mysql:8.4": {
+  "cmd": "docker run -d --name fpc-dev-db --restart unless-stopped -p 3307:3306 -e MYSQL_ROOT_PASSWORD=devpass -e MYSQL_DATABASE=fpc_dev mysql:8.4",
+  "ok": true,
+  "secs": 1,
+  "milestone": "Development environment: MySQL database in Docker",
+  "tail": [
+   "f04c6f7f976e24970cb0ae8bbc5d5b4caef8dc9e1de7c99ccbd2859d46492c71"
+  ]
+ },
+ "Development environment: MySQL database in Docker|until docker exec fpc-dev-db mysqladmin ping -h127.0.0.1 -uroot -pdevpass --silent; do sleep 3; done; echo database ready": {
+  "cmd": "until docker exec fpc-dev-db mysqladmin ping -h127.0.0.1 -uroot -pdevpass --silent; do sleep 3; done; echo database ready",
+  "ok": true,
+  "secs": 1,
+  "milestone": "Development environment: MySQL database in Docker",
+  "tail": [
+   "mysqld is alive",
+   "database ready",
+   "mysqladmin: [Warning] Using a password on the command line interface can be insecure."
+  ]
+ },
+ "Sign-in: configuration, database, router, layout and authentication|php -l lib/auth.php": {
+  "cmd": "php -l lib/auth.php",
+  "ok": true,
+  "secs": 0,
+  "milestone": "Sign-in: configuration, database, router, layout and authentication",
+  "tail": [
+   "No syntax errors detected in lib/auth.php"
+  ]
+ },
+ "Sign-in: configuration, database, router, layout and authentication|php -l modules/auth/pages/login.php": {
+  "cmd": "php -l modules/auth/pages/login.php",
+  "ok": true,
+  "secs": 0,
+  "milestone": "Sign-in: configuration, database, router, layout and authentication",
+  "tail": [
+   "No syntax errors detected in modules/auth/pages/login.php"
+  ]
+ },
+ "First run: migrations, dev server and signing in|php scripts/migrate.php": {
+  "cmd": "php scripts/migrate.php",
+  "ok": true,
+  "secs": 8,
+  "milestone": "First run: migrations, dev server and signing in",
+  "tail": [
+   "applied 0001_foundation",
+   "applied 0002_organisation_roles_permissions",
+   "2 migration(s) applied."
+  ]
+ },
+ "First run: migrations, dev server and signing in|php scripts/seed.php reference": {
+  "cmd": "php scripts/seed.php reference",
+  "ok": true,
+  "secs": 2,
+  "milestone": "First run: migrations, dev server and signing in",
+  "tail": [
+   "Reference data loaded (10 new record(s))."
+  ]
+ },
+ "First run: migrations, dev server and signing in|out=$(php scripts/create_admin.php --email=admin@fpc.test --name=\"Dev Admin\"); echo \"$out\"; echo \"$out\" | grep -o 'http[^ ]*' | clip": {
+  "cmd": "out=$(php scripts/create_admin.php --email=admin@fpc.test --name=\"Dev Admin\"); echo \"$out\"; echo \"$out\" | grep -o 'http[^ ]*' | clip",
+  "ok": true,
+  "secs": 1,
+  "milestone": "First run: migrations, dev server and signing in",
+  "tail": [
+   "Administrator created: Dev Admin <admin@fpc.test>",
+   "",
+   "Open this link within 72 hours to choose a password (it works once):",
+   "http://127.0.0.1:8090/password/reset?token=a99cf3cf16dca8b9f9454a03a8122d362df32da996b1cdba920a16cb14e0314a",
+   "http://127.0.0.1:8090/password/reset?token=a99cf3cf16dca8b9f9454a03a8122d362df32da996b1cdba920a16cb14e0314a"
+  ]
+ },
+ "First run: migrations, dev server and signing in|docker exec fpc-dev-db mysql -uroot -pdevpass fpc_dev -e \"INSERT IGNORE INTO user_roles (user_id, role_id, project_id) SELECT u.id, r.id, p.id FROM users u, roles r, projects p WHERE u.email = 'admin@fpc.test' AND r.role_key IN ('programs_manager', 'finance_officer', 'meal_officer', 'project_coordinator')\"": {
+  "cmd": "docker exec fpc-dev-db mysql -uroot -pdevpass fpc_dev -e \"INSERT IGNORE INTO user_roles (user_id, role_id, project_id) SELECT u.id, r.id, p.id FROM users u, roles r, projects p WHERE u.email = 'admin@fpc.test' AND r.role_key IN ('programs_manager', 'finance_officer', 'meal_officer', 'project_coordinator')\"",
+  "ok": true,
+  "secs": 1,
+  "milestone": "First run: migrations, dev server and signing in",
+  "tail": [
+   "mysql: [Warning] Using a password on the command line interface can be insecure."
+  ]
+ },
+ "Test harness: a test runner and the first unit tests|php -l bootstrap/init.php": {
+  "cmd": "php -l bootstrap/init.php",
+  "ok": true,
+  "secs": 0,
+  "milestone": "Test harness: a test runner and the first unit tests",
+  "tail": [
+   "No syntax errors detected in bootstrap/init.php"
+  ]
+ },
+ "Test harness: a test runner and the first unit tests|php tests/run.php unit": {
+  "cmd": "php tests/run.php unit",
+  "ok": true,
+  "secs": 1,
+  "milestone": "Test harness: a test runner and the first unit tests",
+  "tail": [
+   "ok   [unit] EnvLoaderTest \u203a .env loader ignores trailing comments and keeps quoted text whole",
+   "",
+   "1 passed, 0 failed (0.1s)"
+  ]
+ },
+ "0001 - Foundation: organisation, people, configurable roles and permissions|php -l migrations/0001_foundation.php": {
+  "cmd": "php -l migrations/0001_foundation.php",
+  "ok": true,
+  "secs": 0,
+  "milestone": "0001 - Foundation: organisation, people, configurable roles and permissions",
+  "tail": [
+   "No syntax errors detected in migrations/0001_foundation.php"
+  ]
+ },
+ "0001 - Foundation: organisation, people, configurable roles and permissions|php -l lib/audit.php": {
+  "cmd": "php -l lib/audit.php",
+  "ok": true,
+  "secs": 0,
+  "milestone": "0001 - Foundation: organisation, people, configurable roles and permissions",
+  "tail": [
+   "No syntax errors detected in lib/audit.php"
+  ]
+ },
+ "0001 - Foundation: organisation, people, configurable roles and permissions|php -l lib/auth.php": {
+  "cmd": "php -l lib/auth.php",
+  "ok": true,
+  "secs": 0,
+  "milestone": "0001 - Foundation: organisation, people, configurable roles and permissions",
+  "tail": [
+   "No syntax errors detected in lib/auth.php"
+  ]
+ },
+ "0001 - Foundation: organisation, people, configurable roles and permissions|php tests/run.php unit": {
+  "cmd": "php tests/run.php unit",
+  "ok": false,
+  "secs": 2,
+  "milestone": "0001 - Foundation: organisation, people, configurable roles and permissions",
+  "tail": [
+   "  ok   [unit] SecurityStaticTest \u203a browser storage is never used as a data store (only sidebar display preferences)",
+   "  ok   [unit] SecurityStaticTest \u203a the web root contains only the front controller, assets, the frozen demo and its two short-link forwards",
+   "  ok   [unit] SecurityStaticTest \u203a migrations are numbered in order without gaps or duplicates",
+   "  ok   [unit] SecurityStaticTest \u203a dual-control permissions are declared only with the dual_control grant mode",
+   "",
+   "10 passed, 2 failed (1.2s)"
+  ]
+ },
+ "0001 - Foundation: organisation, people, configurable roles and permissions|bash scripts/test.sh integration": {
+  "cmd": "bash scripts/test.sh integration",
+  "ok": false,
+  "secs": 23,
+  "milestone": "0001 - Foundation: organisation, people, configurable roles and permissions",
+  "tail": [
+   "#2 /app/tests/run.php(48): require_once('/app/tests/lib/...')",
+   "#3 {main}[2026-11-25 12:53:09] ErrorException: require_once(/app/modules/workplans/lib/workplans.php): Failed to open stream: No such file or directory in /app/tests/lib/fixtures.php:9",
+   "#0 /app/tests/lib/fixtures.php(9): {closure}(2, 'require_once(/a...', '/app/tests/lib/...', 9)",
+   "#1 /app/tests/lib/fixtures.php(9): require_once()",
+   "#2 /app/tests/run.php(48): require_once('/app/tests/lib/...')",
+   "#3 {main}"
+  ]
+ },
+ "0001 - Foundation: organisation, people, configurable roles and permissions|bash scripts/test.sh http": {
+  "cmd": "bash scripts/test.sh http",
+  "ok": false,
+  "secs": 14,
+  "milestone": "0001 - Foundation: organisation, people, configurable roles and permissions",
+  "tail": [
+   "#2 /app/tests/run.php(48): require_once('/app/tests/lib/...')",
+   "#3 {main}[2026-11-25 12:53:23] ErrorException: require_once(/app/modules/workplans/lib/workplans.php): Failed to open stream: No such file or directory in /app/tests/lib/fixtures.php:9",
+   "#0 /app/tests/lib/fixtures.php(9): {closure}(2, 'require_once(/a...', '/app/tests/lib/...', 9)",
+   "#1 /app/tests/lib/fixtures.php(9): require_once()",
+   "#2 /app/tests/run.php(48): require_once('/app/tests/lib/...')",
+   "#3 {main}"
+  ]
+ },
+ "0003 - workplans and their planned activities (Phase 2)|php -l migrations/0003_workplans.php": {
+  "cmd": "php -l migrations/0003_workplans.php",
+  "ok": true,
+  "secs": 0,
+  "milestone": "0003 - workplans and their planned activities (Phase 2)",
+  "tail": [
+   "No syntax errors detected in migrations/0003_workplans.php"
+  ]
+ },
+ "0003 - workplans and their planned activities (Phase 2)|php -l modules/fielddata/lib/fielddata.php": {
+  "cmd": "php -l modules/fielddata/lib/fielddata.php",
+  "ok": true,
+  "secs": 0,
+  "milestone": "0003 - workplans and their planned activities (Phase 2)",
+  "tail": [
+   "No syntax errors detected in modules/fielddata/lib/fielddata.php"
+  ]
+ },
+ "0003 - workplans and their planned activities (Phase 2)|php -l modules/workplans/lib/workplans.php": {
+  "cmd": "php -l modules/workplans/lib/workplans.php",
+  "ok": true,
+  "secs": 0,
+  "milestone": "0003 - workplans and their planned activities (Phase 2)",
+  "tail": [
+   "No syntax errors detected in modules/workplans/lib/workplans.php"
+  ]
+ },
+ "0003 - workplans and their planned activities (Phase 2)|php scripts/migrate.php": {
+  "cmd": "php scripts/migrate.php",
+  "ok": true,
+  "secs": 2,
+  "milestone": "0003 - workplans and their planned activities (Phase 2)",
+  "tail": [
+   "applied 0003_workplans",
+   "1 migration(s) applied."
+  ]
+ },
+ "0003 - workplans and their planned activities (Phase 2)|bash scripts/test.sh integration": {
+  "cmd": "bash scripts/test.sh integration",
+  "ok": false,
+  "secs": 16,
+  "milestone": "0003 - workplans and their planned activities (Phase 2)",
+  "tail": [
+   "#4 {main}[2026-11-25 12:53:43] ErrorException: require_once(/app/modules/registers/lib/registers.php): Failed to open stream: No such file or directory in /app/modules/workplans/lib/workplans.php:17",
+   "#0 /app/modules/workplans/lib/workplans.php(17): {closure}(2, 'require_once(/a...', '/app/modules/wo...', 17)",
+   "#1 /app/modules/workplans/lib/workplans.php(17): require_once()",
+   "#2 /app/tests/lib/fixtures.php(9): require_once('/app/modules/wo...')",
+   "#3 /app/tests/run.php(48): require_once('/app/tests/lib/...')",
+   "#4 {main}"
+  ]
+ },
+ "0003 - workplans and their planned activities (Phase 2)|bash scripts/test.sh http": {
+  "cmd": "bash scripts/test.sh http",
+  "ok": false,
+  "secs": 17,
+  "milestone": "0003 - workplans and their planned activities (Phase 2)",
+  "tail": [
+   "#4 {main}[2026-11-25 12:53:59] ErrorException: require_once(/app/modules/registers/lib/registers.php): Failed to open stream: No such file or directory in /app/modules/workplans/lib/workplans.php:17",
+   "#0 /app/modules/workplans/lib/workplans.php(17): {closure}(2, 'require_once(/a...', '/app/modules/wo...', 17)",
+   "#1 /app/modules/workplans/lib/workplans.php(17): require_once()",
+   "#2 /app/tests/lib/fixtures.php(9): require_once('/app/modules/wo...')",
+   "#3 /app/tests/run.php(48): require_once('/app/tests/lib/...')",
+   "#4 {main}"
+  ]
+ },
+ "0004 - activity reports (Phase 2): what actually happened for a planned activ|php -l migrations/0004_activity_reports.php": {
+  "cmd": "php -l migrations/0004_activity_reports.php",
+  "ok": true,
+  "secs": 1,
+  "milestone": "0004 - activity reports (Phase 2): what actually happened for a planned activ",
+  "tail": [
+   "No syntax errors detected in migrations/0004_activity_reports.php"
+  ]
+ },
+ "0004 - activity reports (Phase 2): what actually happened for a planned activ|php -l modules/workplans/lib/activity_reports.php": {
+  "cmd": "php -l modules/workplans/lib/activity_reports.php",
+  "ok": true,
+  "secs": 1,
+  "milestone": "0004 - activity reports (Phase 2): what actually happened for a planned activ",
+  "tail": [
+   "No syntax errors detected in modules/workplans/lib/activity_reports.php"
+  ]
+ },
+ "0004 - activity reports (Phase 2): what actually happened for a planned activ|php -l modules/workplans/pages/reports.php": {
+  "cmd": "php -l modules/workplans/pages/reports.php",
+  "ok": true,
+  "secs": 1,
+  "milestone": "0004 - activity reports (Phase 2): what actually happened for a planned activ",
+  "tail": [
+   "No syntax errors detected in modules/workplans/pages/reports.php"
+  ]
+ },
+ "0004 - activity reports (Phase 2): what actually happened for a planned activ|php scripts/migrate.php": {
+  "cmd": "php scripts/migrate.php",
+  "ok": true,
+  "secs": 3,
+  "milestone": "0004 - activity reports (Phase 2): what actually happened for a planned activ",
+  "tail": [
+   "applied 0004_activity_reports",
+   "1 migration(s) applied."
+  ]
+ },
+ "0004 - activity reports (Phase 2): what actually happened for a planned activ|bash scripts/test.sh integration": {
+  "cmd": "bash scripts/test.sh integration",
+  "ok": false,
+  "secs": 66,
+  "milestone": "0004 - activity reports (Phase 2): what actually happened for a planned activ",
+  "tail": [
+   "#4 {main}[2026-11-25 12:54:43] ErrorException: require_once(/app/modules/registers/lib/registers.php): Failed to open stream: No such file or directory in /app/modules/workplans/lib/workplans.php:17",
+   "#0 /app/modules/workplans/lib/workplans.php(17): {closure}(2, 'require_once(/a...', '/app/modules/wo...', 17)",
+   "#1 /app/modules/workplans/lib/workplans.php(17): require_once()",
+   "#2 /app/tests/lib/fixtures.php(9): require_once('/app/modules/wo...')",
+   "#3 /app/tests/run.php(48): require_once('/app/tests/lib/...')",
+   "#4 {main}"
+  ]
+ },
+ "0004 - activity reports (Phase 2): what actually happened for a planned activ|bash scripts/test.sh http": {
+  "cmd": "bash scripts/test.sh http",
+  "ok": false,
+  "secs": 15,
+  "milestone": "0004 - activity reports (Phase 2): what actually happened for a planned activ",
+  "tail": [
+   "#4 {main}[2026-11-25 12:55:25] ErrorException: require_once(/app/modules/registers/lib/registers.php): Failed to open stream: No such file or directory in /app/modules/workplans/lib/workplans.php:17",
+   "#0 /app/modules/workplans/lib/workplans.php(17): {closure}(2, 'require_once(/a...', '/app/modules/wo...', 17)",
+   "#1 /app/modules/workplans/lib/workplans.php(17): require_once()",
+   "#2 /app/tests/lib/fixtures.php(9): require_once('/app/modules/wo...')",
+   "#3 /app/tests/run.php(48): require_once('/app/tests/lib/...')",
+   "#4 {main}"
+  ]
+ },
+ "0005 - project budgets, expenditure and exchange rates (Phase 2)|php -l migrations/0005_finance.php": {
+  "cmd": "php -l migrations/0005_finance.php",
+  "ok": true,
+  "secs": 0,
+  "milestone": "0005 - project budgets, expenditure and exchange rates (Phase 2)",
+  "tail": [
+   "No syntax errors detected in migrations/0005_finance.php"
+  ]
+ },
+ "0005 - project budgets, expenditure and exchange rates (Phase 2)|php -l modules/finance/lib/finance.php": {
+  "cmd": "php -l modules/finance/lib/finance.php",
+  "ok": true,
+  "secs": 0,
+  "milestone": "0005 - project budgets, expenditure and exchange rates (Phase 2)",
+  "tail": [
+   "No syntax errors detected in modules/finance/lib/finance.php"
+  ]
+ },
+ "0005 - project budgets, expenditure and exchange rates (Phase 2)|php -l modules/finance/pages/budget_form.php": {
+  "cmd": "php -l modules/finance/pages/budget_form.php",
+  "ok": true,
+  "secs": 0,
+  "milestone": "0005 - project budgets, expenditure and exchange rates (Phase 2)",
+  "tail": [
+   "No syntax errors detected in modules/finance/pages/budget_form.php"
+  ]
+ },
+ "0005 - project budgets, expenditure and exchange rates (Phase 2)|php scripts/migrate.php": {
+  "cmd": "php scripts/migrate.php",
+  "ok": true,
+  "secs": 2,
+  "milestone": "0005 - project budgets, expenditure and exchange rates (Phase 2)",
+  "tail": [
+   "applied 0005_finance",
+   "1 migration(s) applied."
+  ]
+ },
+ "0005 - project budgets, expenditure and exchange rates (Phase 2)|bash scripts/test.sh integration": {
+  "cmd": "bash scripts/test.sh integration",
+  "ok": false,
+  "secs": 16,
+  "milestone": "0005 - project budgets, expenditure and exchange rates (Phase 2)",
+  "tail": [
+   "#4 {main}[2026-11-25 12:55:44] ErrorException: require_once(/app/modules/registers/lib/registers.php): Failed to open stream: No such file or directory in /app/modules/workplans/lib/workplans.php:17",
+   "#0 /app/modules/workplans/lib/workplans.php(17): {closure}(2, 'require_once(/a...', '/app/modules/wo...', 17)",
+   "#1 /app/modules/workplans/lib/workplans.php(17): require_once()",
+   "#2 /app/tests/lib/fixtures.php(9): require_once('/app/modules/wo...')",
+   "#3 /app/tests/run.php(48): require_once('/app/tests/lib/...')",
+   "#4 {main}"
+  ]
+ },
+ "0005 - project budgets, expenditure and exchange rates (Phase 2)|bash scripts/test.sh http": {
+  "cmd": "bash scripts/test.sh http",
+  "ok": false,
+  "secs": 14,
+  "milestone": "0005 - project budgets, expenditure and exchange rates (Phase 2)",
+  "tail": [
+   "#4 {main}[2026-11-25 12:55:59] ErrorException: require_once(/app/modules/registers/lib/registers.php): Failed to open stream: No such file or directory in /app/modules/workplans/lib/workplans.php:17",
+   "#0 /app/modules/workplans/lib/workplans.php(17): {closure}(2, 'require_once(/a...', '/app/modules/wo...', 17)",
+   "#1 /app/modules/workplans/lib/workplans.php(17): require_once()",
+   "#2 /app/tests/lib/fixtures.php(9): require_once('/app/modules/wo...')",
+   "#3 /app/tests/run.php(48): require_once('/app/tests/lib/...')",
+   "#4 {main}"
+  ]
+ },
+ "0006 - risk & issue register, follow-up actions, change requests (Phase 2)|php -l migrations/0006_registers_changes.php": {
+  "cmd": "php -l migrations/0006_registers_changes.php",
+  "ok": true,
+  "secs": 0,
+  "milestone": "0006 - risk & issue register, follow-up actions, change requests (Phase 2)",
+  "tail": [
+   "No syntax errors detected in migrations/0006_registers_changes.php"
+  ]
+ },
+ "0006 - risk & issue register, follow-up actions, change requests (Phase 2)|php -l modules/registers/lib/registers.php": {
+  "cmd": "php -l modules/registers/lib/registers.php",
+  "ok": true,
+  "secs": 0,
+  "milestone": "0006 - risk & issue register, follow-up actions, change requests (Phase 2)",
+  "tail": [
+   "No syntax errors detected in modules/registers/lib/registers.php"
+  ]
+ },
+ "0006 - risk & issue register, follow-up actions, change requests (Phase 2)|php -l modules/registers/pages/action_form.php": {
+  "cmd": "php -l modules/registers/pages/action_form.php",
+  "ok": true,
+  "secs": 0,
+  "milestone": "0006 - risk & issue register, follow-up actions, change requests (Phase 2)",
+  "tail": [
+   "No syntax errors detected in modules/registers/pages/action_form.php"
+  ]
+ },
+ "0006 - risk & issue register, follow-up actions, change requests (Phase 2)|php scripts/migrate.php": {
+  "cmd": "php scripts/migrate.php",
+  "ok": true,
+  "secs": 4,
+  "milestone": "0006 - risk & issue register, follow-up actions, change requests (Phase 2)",
+  "tail": [
+   "applied 0006_registers_changes",
+   "1 migration(s) applied."
+  ]
+ },
+ "0006 - risk & issue register, follow-up actions, change requests (Phase 2)|bash scripts/test.sh integration": {
+  "cmd": "bash scripts/test.sh integration",
+  "ok": false,
+  "secs": 13,
+  "milestone": "0006 - risk & issue register, follow-up actions, change requests (Phase 2)",
+  "tail": [
+   "#2 /app/tests/run.php(48): require_once('/app/tests/lib/...')",
+   "#3 {main}[2026-11-25 12:56:17] ErrorException: require_once(/app/modules/results/lib/results.php): Failed to open stream: No such file or directory in /app/tests/lib/fixtures.php:13",
+   "#0 /app/tests/lib/fixtures.php(13): {closure}(2, 'require_once(/a...', '/app/tests/lib/...', 13)",
+   "#1 /app/tests/lib/fixtures.php(13): require_once()",
+   "#2 /app/tests/run.php(48): require_once('/app/tests/lib/...')",
+   "#3 {main}"
+  ]
+ },
+ "0006 - risk & issue register, follow-up actions, change requests (Phase 2)|bash scripts/test.sh http": {
+  "cmd": "bash scripts/test.sh http",
+  "ok": false,
+  "secs": 16,
+  "milestone": "0006 - risk & issue register, follow-up actions, change requests (Phase 2)",
+  "tail": [
+   "#2 /app/tests/run.php(48): require_once('/app/tests/lib/...')",
+   "#3 {main}[2026-11-25 12:56:32] ErrorException: require_once(/app/modules/results/lib/results.php): Failed to open stream: No such file or directory in /app/tests/lib/fixtures.php:13",
+   "#0 /app/tests/lib/fixtures.php(13): {closure}(2, 'require_once(/a...', '/app/tests/lib/...', 13)",
+   "#1 /app/tests/lib/fixtures.php(13): require_once()",
+   "#2 /app/tests/run.php(48): require_once('/app/tests/lib/...')",
+   "#3 {main}"
+  ]
+ },
+ "0007 - results framework, indicators, targets and results (Phase 3)|php -l migrations/0007_results.php": {
+  "cmd": "php -l migrations/0007_results.php",
+  "ok": true,
+  "secs": 0,
+  "milestone": "0007 - results framework, indicators, targets and results (Phase 3)",
+  "tail": [
+   "No syntax errors detected in migrations/0007_results.php"
+  ]
+ },
+ "0007 - results framework, indicators, targets and results (Phase 3)|php -l modules/dashboard/lib/performance.php": {
+  "cmd": "php -l modules/dashboard/lib/performance.php",
+  "ok": true,
+  "secs": 0,
+  "milestone": "0007 - results framework, indicators, targets and results (Phase 3)",
+  "tail": [
+   "No syntax errors detected in modules/dashboard/lib/performance.php"
+  ]
+ },
+ "0007 - results framework, indicators, targets and results (Phase 3)|php -l modules/onboarding/lib/datasets.php": {
+  "cmd": "php -l modules/onboarding/lib/datasets.php",
+  "ok": true,
+  "secs": 0,
+  "milestone": "0007 - results framework, indicators, targets and results (Phase 3)",
+  "tail": [
+   "No syntax errors detected in modules/onboarding/lib/datasets.php"
+  ]
+ },
+ "0007 - results framework, indicators, targets and results (Phase 3)|php scripts/migrate.php": {
+  "cmd": "php scripts/migrate.php",
+  "ok": true,
+  "secs": 5,
+  "milestone": "0007 - results framework, indicators, targets and results (Phase 3)",
+  "tail": [
+   "applied 0007_results",
+   "1 migration(s) applied."
+  ]
+ },
+ "0007 - results framework, indicators, targets and results (Phase 3)|bash scripts/test.sh integration": {
+  "cmd": "bash scripts/test.sh integration",
+  "ok": false,
+  "secs": 17,
+  "milestone": "0007 - results framework, indicators, targets and results (Phase 3)",
+  "tail": [
+   "#2 /app/tests/run.php(48): require_once('/app/tests/lib/...')",
+   "#3 {main}[2026-11-25 12:56:55] ErrorException: require_once(/app/modules/instruments/lib/instruments.php): Failed to open stream: No such file or directory in /app/tests/lib/fixtures.php:16",
+   "#0 /app/tests/lib/fixtures.php(16): {closure}(2, 'require_once(/a...', '/app/tests/lib/...', 16)",
+   "#1 /app/tests/lib/fixtures.php(16): require_once()",
+   "#2 /app/tests/run.php(48): require_once('/app/tests/lib/...')",
+   "#3 {main}"
+  ]
+ },
+ "0007 - results framework, indicators, targets and results (Phase 3)|bash scripts/test.sh http": {
+  "cmd": "bash scripts/test.sh http",
+  "ok": false,
+  "secs": 13,
+  "milestone": "0007 - results framework, indicators, targets and results (Phase 3)",
+  "tail": [
+   "#2 /app/tests/run.php(48): require_once('/app/tests/lib/...')",
+   "#3 {main}[2026-11-25 12:57:09] ErrorException: require_once(/app/modules/instruments/lib/instruments.php): Failed to open stream: No such file or directory in /app/tests/lib/fixtures.php:16",
+   "#0 /app/tests/lib/fixtures.php(16): {closure}(2, 'require_once(/a...', '/app/tests/lib/...', 16)",
+   "#1 /app/tests/lib/fixtures.php(16): require_once()",
+   "#2 /app/tests/run.php(48): require_once('/app/tests/lib/...')",
+   "#3 {main}"
+  ]
+ },
+ "0008 - evidence files (Phase 3)|php -l migrations/0008_evidence.php": {
+  "cmd": "php -l migrations/0008_evidence.php",
+  "ok": true,
+  "secs": 0,
+  "milestone": "0008 - evidence files (Phase 3)",
+  "tail": [
+   "No syntax errors detected in migrations/0008_evidence.php"
+  ]
+ },
+ "0008 - evidence files (Phase 3)|php scripts/migrate.php": {
+  "cmd": "php scripts/migrate.php",
+  "ok": true,
+  "secs": 1,
+  "milestone": "0008 - evidence files (Phase 3)",
+  "tail": [
+   "applied 0008_evidence",
+   "1 migration(s) applied."
+  ]
+ },
+ "0008 - evidence files (Phase 3)|bash scripts/test.sh integration": {
+  "cmd": "bash scripts/test.sh integration",
+  "ok": false,
+  "secs": 15,
+  "milestone": "0008 - evidence files (Phase 3)",
+  "tail": [
+   "#2 /app/tests/run.php(48): require_once('/app/tests/lib/...')",
+   "#3 {main}[2026-11-25 12:57:25] ErrorException: require_once(/app/modules/instruments/lib/instruments.php): Failed to open stream: No such file or directory in /app/tests/lib/fixtures.php:16",
+   "#0 /app/tests/lib/fixtures.php(16): {closure}(2, 'require_once(/a...', '/app/tests/lib/...', 16)",
+   "#1 /app/tests/lib/fixtures.php(16): require_once()",
+   "#2 /app/tests/run.php(48): require_once('/app/tests/lib/...')",
+   "#3 {main}"
+  ]
+ },
+ "0008 - evidence files (Phase 3)|bash scripts/test.sh http": {
+  "cmd": "bash scripts/test.sh http",
+  "ok": false,
+  "secs": 15,
+  "milestone": "0008 - evidence files (Phase 3)",
+  "tail": [
+   "#2 /app/tests/run.php(48): require_once('/app/tests/lib/...')",
+   "#3 {main}[2026-11-25 12:57:40] ErrorException: require_once(/app/modules/instruments/lib/instruments.php): Failed to open stream: No such file or directory in /app/tests/lib/fixtures.php:16",
+   "#0 /app/tests/lib/fixtures.php(16): {closure}(2, 'require_once(/a...', '/app/tests/lib/...', 16)",
+   "#1 /app/tests/lib/fixtures.php(16): require_once()",
+   "#2 /app/tests/run.php(48): require_once('/app/tests/lib/...')",
+   "#3 {main}"
+  ]
+ },
+ "0009 - Phase 4 foundation: dual-control permissions, time-limited direct gran|php -l migrations/0009_phase4_foundation.php": {
+  "cmd": "php -l migrations/0009_phase4_foundation.php",
+  "ok": true,
+  "secs": 0,
+  "milestone": "0009 - Phase 4 foundation: dual-control permissions, time-limited direct gran",
+  "tail": [
+   "No syntax errors detected in migrations/0009_phase4_foundation.php"
+  ]
+ },
+ "0009 - Phase 4 foundation: dual-control permissions, time-limited direct gran|php -l modules/community/lib/community.php": {
+  "cmd": "php -l modules/community/lib/community.php",
+  "ok": true,
+  "secs": 0,
+  "milestone": "0009 - Phase 4 foundation: dual-control permissions, time-limited direct gran",
+  "tail": [
+   "No syntax errors detected in modules/community/lib/community.php"
+  ]
+ },
+ "0009 - Phase 4 foundation: dual-control permissions, time-limited direct gran|php -l modules/instruments/lib/instruments.php": {
+  "cmd": "php -l modules/instruments/lib/instruments.php",
+  "ok": true,
+  "secs": 0,
+  "milestone": "0009 - Phase 4 foundation: dual-control permissions, time-limited direct gran",
+  "tail": [
+   "No syntax errors detected in modules/instruments/lib/instruments.php"
+  ]
+ },
+ "0009 - Phase 4 foundation: dual-control permissions, time-limited direct gran|php scripts/migrate.php": {
+  "cmd": "php scripts/migrate.php",
+  "ok": true,
+  "secs": 8,
+  "milestone": "0009 - Phase 4 foundation: dual-control permissions, time-limited direct gran",
+  "tail": [
+   "applied 0009_phase4_foundation",
+   "1 migration(s) applied."
+  ]
+ },
+ "0009 - Phase 4 foundation: dual-control permissions, time-limited direct gran|bash scripts/test.sh integration": {
+  "cmd": "bash scripts/test.sh integration",
+  "ok": false,
+  "secs": 15,
+  "milestone": "0009 - Phase 4 foundation: dual-control permissions, time-limited direct gran",
+  "tail": [
+   "#2 /app/tests/run.php(48): require_once('/app/tests/lib/...')",
+   "#3 {main}[2026-11-25 12:58:03] ErrorException: require_once(/app/modules/scorecards/lib/scorecards.php): Failed to open stream: No such file or directory in /app/tests/lib/fixtures.php:18",
+   "#0 /app/tests/lib/fixtures.php(18): {closure}(2, 'require_once(/a...', '/app/tests/lib/...', 18)",
+   "#1 /app/tests/lib/fixtures.php(18): require_once()",
+   "#2 /app/tests/run.php(48): require_once('/app/tests/lib/...')",
+   "#3 {main}"
+  ]
+ },
+ "0009 - Phase 4 foundation: dual-control permissions, time-limited direct gran|bash scripts/test.sh http": {
+  "cmd": "bash scripts/test.sh http",
+  "ok": false,
+  "secs": 23,
+  "milestone": "0009 - Phase 4 foundation: dual-control permissions, time-limited direct gran",
+  "tail": [
+   "#2 /app/tests/run.php(48): require_once('/app/tests/lib/...')",
+   "#3 {main}[2026-11-25 12:58:26] ErrorException: require_once(/app/modules/scorecards/lib/scorecards.php): Failed to open stream: No such file or directory in /app/tests/lib/fixtures.php:18",
+   "#0 /app/tests/lib/fixtures.php(18): {closure}(2, 'require_once(/a...', '/app/tests/lib/...', 18)",
+   "#1 /app/tests/lib/fixtures.php(18): require_once()",
+   "#2 /app/tests/run.php(48): require_once('/app/tests/lib/...')",
+   "#3 {main}"
+  ]
+ },
+ "0010 - community scorecard cycles (Phase 4)|php -l migrations/0010_scorecards.php": {
+  "cmd": "php -l migrations/0010_scorecards.php",
+  "ok": true,
+  "secs": 0,
+  "milestone": "0010 - community scorecard cycles (Phase 4)",
+  "tail": [
+   "No syntax errors detected in migrations/0010_scorecards.php"
+  ]
+ },
+ "0010 - community scorecard cycles (Phase 4)|php -l modules/scorecards/lib/scorecards.php": {
+  "cmd": "php -l modules/scorecards/lib/scorecards.php",
+  "ok": true,
+  "secs": 0,
+  "milestone": "0010 - community scorecard cycles (Phase 4)",
+  "tail": [
+   "No syntax errors detected in modules/scorecards/lib/scorecards.php"
+  ]
+ },
+ "0010 - community scorecard cycles (Phase 4)|php -l modules/scorecards/pages/form.php": {
+  "cmd": "php -l modules/scorecards/pages/form.php",
+  "ok": true,
+  "secs": 0,
+  "milestone": "0010 - community scorecard cycles (Phase 4)",
+  "tail": [
+   "No syntax errors detected in modules/scorecards/pages/form.php"
+  ]
+ },
+ "0010 - community scorecard cycles (Phase 4)|php scripts/migrate.php": {
+  "cmd": "php scripts/migrate.php",
+  "ok": true,
+  "secs": 10,
+  "milestone": "0010 - community scorecard cycles (Phase 4)",
+  "tail": [
+   "applied 0010_scorecards",
+   "1 migration(s) applied."
+  ]
+ },
+ "0011 - beneficiary register, consent records and retention rules (Phase 4)|php -l migrations/0011_beneficiaries_consent_retention.php": {
+  "cmd": "php -l migrations/0011_beneficiaries_consent_retention.php",
+  "ok": true,
+  "secs": 0,
+  "milestone": "0011 - beneficiary register, consent records and retention rules (Phase 4)",
+  "tail": [
+   "No syntax errors detected in migrations/0011_beneficiaries_consent_retention.php"
+  ]
+ },
+ "0011 - beneficiary register, consent records and retention rules (Phase 4)|php -l modules/beneficiaries/lib/beneficiaries.php": {
+  "cmd": "php -l modules/beneficiaries/lib/beneficiaries.php",
+  "ok": true,
+  "secs": 0,
+  "milestone": "0011 - beneficiary register, consent records and retention rules (Phase 4)",
+  "tail": [
+   "No syntax errors detected in modules/beneficiaries/lib/beneficiaries.php"
+  ]
+ },
+ "0011 - beneficiary register, consent records and retention rules (Phase 4)|php -l modules/beneficiaries/pages/index.php": {
+  "cmd": "php -l modules/beneficiaries/pages/index.php",
+  "ok": true,
+  "secs": 0,
+  "milestone": "0011 - beneficiary register, consent records and retention rules (Phase 4)",
+  "tail": [
+   "No syntax errors detected in modules/beneficiaries/pages/index.php"
+  ]
+ },
+ "0011 - beneficiary register, consent records and retention rules (Phase 4)|php scripts/migrate.php": {
+  "cmd": "php scripts/migrate.php",
+  "ok": true,
+  "secs": 12,
+  "milestone": "0011 - beneficiary register, consent records and retention rules (Phase 4)",
+  "tail": [
+   "applied 0011_beneficiaries_consent_retention",
+   "1 migration(s) applied."
+  ]
+ },
+ "0011 - beneficiary register, consent records and retention rules (Phase 4)|bash scripts/test.sh integration": {
+  "cmd": "bash scripts/test.sh integration",
+  "ok": false,
+  "secs": 15,
+  "milestone": "0011 - beneficiary register, consent records and retention rules (Phase 4)",
+  "tail": [
+   "#2 /app/tests/run.php(48): require_once('/app/tests/lib/...')",
+   "#3 {main}[2026-11-25 12:59:12] ErrorException: require_once(/app/modules/safeguarding/lib/safeguarding.php): Failed to open stream: No such file or directory in /app/tests/lib/fixtures.php:20",
+   "#0 /app/tests/lib/fixtures.php(20): {closure}(2, 'require_once(/a...', '/app/tests/lib/...', 20)",
+   "#1 /app/tests/lib/fixtures.php(20): require_once()",
+   "#2 /app/tests/run.php(48): require_once('/app/tests/lib/...')",
+   "#3 {main}"
+  ]
+ },
+ "0012 - safeguarding / child protection (Phase 4). NOT FOR LIVE DATA until FPC|php -l migrations/0012_safeguarding.php": {
+  "cmd": "php -l migrations/0012_safeguarding.php",
+  "ok": true,
+  "secs": 0,
+  "milestone": "0012 - safeguarding / child protection (Phase 4). NOT FOR LIVE DATA until FPC",
+  "tail": [
+   "No syntax errors detected in migrations/0012_safeguarding.php"
+  ]
+ },
+ "0012 - safeguarding / child protection (Phase 4). NOT FOR LIVE DATA until FPC|php -l modules/safeguarding/lib/safeguarding.php": {
+  "cmd": "php -l modules/safeguarding/lib/safeguarding.php",
+  "ok": true,
+  "secs": 0,
+  "milestone": "0012 - safeguarding / child protection (Phase 4). NOT FOR LIVE DATA until FPC",
+  "tail": [
+   "No syntax errors detected in modules/safeguarding/lib/safeguarding.php"
+  ]
+ },
+ "0012 - safeguarding / child protection (Phase 4). NOT FOR LIVE DATA until FPC|php -l modules/safeguarding/pages/access.php": {
+  "cmd": "php -l modules/safeguarding/pages/access.php",
+  "ok": true,
+  "secs": 0,
+  "milestone": "0012 - safeguarding / child protection (Phase 4). NOT FOR LIVE DATA until FPC",
+  "tail": [
+   "No syntax errors detected in modules/safeguarding/pages/access.php"
+  ]
+ },
+ "0012 - safeguarding / child protection (Phase 4). NOT FOR LIVE DATA until FPC|php scripts/migrate.php": {
+  "cmd": "php scripts/migrate.php",
+  "ok": true,
+  "secs": 4,
+  "milestone": "0012 - safeguarding / child protection (Phase 4). NOT FOR LIVE DATA until FPC",
+  "tail": [
+   "applied 0012_safeguarding",
+   "1 migration(s) applied."
+  ]
+ },
+ "0012 - safeguarding / child protection (Phase 4). NOT FOR LIVE DATA until FPC|bash scripts/test.sh http": {
+  "cmd": "bash scripts/test.sh http",
+  "ok": false,
+  "secs": 15,
+  "milestone": "0012 - safeguarding / child protection (Phase 4). NOT FOR LIVE DATA until FPC",
+  "tail": [
+   "#2 /app/tests/run.php(48): require_once('/app/tests/lib/...')",
+   "#3 {main}[2026-11-25 12:59:36] ErrorException: require_once(/app/modules/capacity/lib/capacity.php): Failed to open stream: No such file or directory in /app/tests/lib/fixtures.php:22",
+   "#0 /app/tests/lib/fixtures.php(22): {closure}(2, 'require_once(/a...', '/app/tests/lib/...', 22)",
+   "#1 /app/tests/lib/fixtures.php(22): require_once()",
+   "#2 /app/tests/run.php(48): require_once('/app/tests/lib/...')",
+   "#3 {main}"
+  ]
+ },
+ "0013 - organisational capacity (Tilitonse-style maturity) and consultancy QA|php -l migrations/0013_capacity_consultancy.php": {
+  "cmd": "php -l migrations/0013_capacity_consultancy.php",
+  "ok": true,
+  "secs": 0,
+  "milestone": "0013 - organisational capacity (Tilitonse-style maturity) and consultancy QA",
+  "tail": [
+   "No syntax errors detected in migrations/0013_capacity_consultancy.php"
+  ]
+ },
+ "0013 - organisational capacity (Tilitonse-style maturity) and consultancy QA|php -l modules/capacity/lib/capacity.php": {
+  "cmd": "php -l modules/capacity/lib/capacity.php",
+  "ok": true,
+  "secs": 0,
+  "milestone": "0013 - organisational capacity (Tilitonse-style maturity) and consultancy QA",
+  "tail": [
+   "No syntax errors detected in modules/capacity/lib/capacity.php"
+  ]
+ },
+ "0013 - organisational capacity (Tilitonse-style maturity) and consultancy QA|php -l modules/capacity/pages/consultancies.php": {
+  "cmd": "php -l modules/capacity/pages/consultancies.php",
+  "ok": true,
+  "secs": 0,
+  "milestone": "0013 - organisational capacity (Tilitonse-style maturity) and consultancy QA",
+  "tail": [
+   "No syntax errors detected in modules/capacity/pages/consultancies.php"
+  ]
+ },
+ "0013 - organisational capacity (Tilitonse-style maturity) and consultancy QA|php scripts/migrate.php": {
+  "cmd": "php scripts/migrate.php",
+  "ok": true,
+  "secs": 3,
+  "milestone": "0013 - organisational capacity (Tilitonse-style maturity) and consultancy QA",
+  "tail": [
+   "applied 0013_capacity_consultancy",
+   "1 migration(s) applied."
+  ]
+ },
+ "0014 - donor reporting (Phase 6): reporting calendar, versioned templates, re|php -l migrations/0014_reporting.php": {
+  "cmd": "php -l migrations/0014_reporting.php",
+  "ok": true,
+  "secs": 0,
+  "milestone": "0014 - donor reporting (Phase 6): reporting calendar, versioned templates, re",
+  "tail": [
+   "No syntax errors detected in migrations/0014_reporting.php"
+  ]
+ },
+ "0014 - donor reporting (Phase 6): reporting calendar, versioned templates, re|php -l modules/reporting/pages/index.php": {
+  "cmd": "php -l modules/reporting/pages/index.php",
+  "ok": true,
+  "secs": 0,
+  "milestone": "0014 - donor reporting (Phase 6): reporting calendar, versioned templates, re",
+  "tail": [
+   "No syntax errors detected in modules/reporting/pages/index.php"
+  ]
+ },
+ "0014 - donor reporting (Phase 6): reporting calendar, versioned templates, re|php -l modules/reporting/pages/template_view.php": {
+  "cmd": "php -l modules/reporting/pages/template_view.php",
+  "ok": true,
+  "secs": 0,
+  "milestone": "0014 - donor reporting (Phase 6): reporting calendar, versioned templates, re",
+  "tail": [
+   "No syntax errors detected in modules/reporting/pages/template_view.php"
+  ]
+ },
+ "0014 - donor reporting (Phase 6): reporting calendar, versioned templates, re|php scripts/migrate.php": {
+  "cmd": "php scripts/migrate.php",
+  "ok": true,
+  "secs": 5,
+  "milestone": "0014 - donor reporting (Phase 6): reporting calendar, versioned templates, re",
+  "tail": [
+   "applied 0014_reporting",
+   "1 migration(s) applied."
+  ]
+ },
+ "0014 - donor reporting (Phase 6): reporting calendar, versioned templates, re|bash scripts/test.sh integration": {
+  "cmd": "bash scripts/test.sh integration",
+  "ok": false,
+  "secs": 16,
+  "milestone": "0014 - donor reporting (Phase 6): reporting calendar, versioned templates, re",
+  "tail": [
+   "#4 {main}[2026-11-25 13:00:08] ErrorException: require_once(/app/modules/onboarding/lib/sources.php): Failed to open stream: No such file or directory in /app/modules/onboarding/lib/onboarding.php:15",
+   "#0 /app/modules/onboarding/lib/onboarding.php(15): {closure}(2, 'require_once(/a...', '/app/modules/on...', 15)",
+   "#1 /app/modules/onboarding/lib/onboarding.php(15): require_once()",
+   "#2 /app/tests/lib/fixtures.php(28): require_once('/app/modules/on...')",
+   "#3 /app/tests/run.php(48): require_once('/app/tests/lib/...')",
+   "#4 {main}"
+  ]
+ },
+ "0015 - operational readiness (Phase 7): field-data import, notification log,|php -l migrations/0015_operations.php": {
+  "cmd": "php -l migrations/0015_operations.php",
+  "ok": true,
+  "secs": 0,
+  "milestone": "0015 - operational readiness (Phase 7): field-data import, notification log,",
+  "tail": [
+   "No syntax errors detected in migrations/0015_operations.php"
+  ]
+ },
+ "0015 - operational readiness (Phase 7): field-data import, notification log,|php -l modules/fielddata/pages/index.php": {
+  "cmd": "php -l modules/fielddata/pages/index.php",
+  "ok": true,
+  "secs": 0,
+  "milestone": "0015 - operational readiness (Phase 7): field-data import, notification log,",
+  "tail": [
+   "No syntax errors detected in modules/fielddata/pages/index.php"
+  ]
+ },
+ "0015 - operational readiness (Phase 7): field-data import, notification log,|php -l scripts/notify.php": {
+  "cmd": "php -l scripts/notify.php",
+  "ok": true,
+  "secs": 0,
+  "milestone": "0015 - operational readiness (Phase 7): field-data import, notification log,",
+  "tail": [
+   "No syntax errors detected in scripts/notify.php"
+  ]
+ },
+ "0015 - operational readiness (Phase 7): field-data import, notification log,|php scripts/migrate.php": {
+  "cmd": "php scripts/migrate.php",
+  "ok": true,
+  "secs": 4,
+  "milestone": "0015 - operational readiness (Phase 7): field-data import, notification log,",
+  "tail": [
+   "applied 0015_operations",
+   "1 migration(s) applied."
+  ]
+ },
+ "0015 - operational readiness (Phase 7): field-data import, notification log,|bash scripts/test.sh integration": {
+  "cmd": "bash scripts/test.sh integration",
+  "ok": false,
+  "secs": 16,
+  "milestone": "0015 - operational readiness (Phase 7): field-data import, notification log,",
+  "tail": [
+   "#4 {main}[2026-11-25 13:00:30] ErrorException: require_once(/app/modules/onboarding/lib/sources.php): Failed to open stream: No such file or directory in /app/modules/onboarding/lib/onboarding.php:15",
+   "#0 /app/modules/onboarding/lib/onboarding.php(15): {closure}(2, 'require_once(/a...', '/app/modules/on...', 15)",
+   "#1 /app/modules/onboarding/lib/onboarding.php(15): require_once()",
+   "#2 /app/tests/lib/fixtures.php(28): require_once('/app/modules/on...')",
+   "#3 /app/tests/run.php(48): require_once('/app/tests/lib/...')",
+   "#4 {main}"
+  ]
+ },
+ "0015 - operational readiness (Phase 7): field-data import, notification log,|bash scripts/test.sh http": {
+  "cmd": "bash scripts/test.sh http",
+  "ok": false,
+  "secs": 16,
+  "milestone": "0015 - operational readiness (Phase 7): field-data import, notification log,",
+  "tail": [
+   "#4 {main}[2026-11-25 13:00:47] ErrorException: require_once(/app/modules/onboarding/lib/sources.php): Failed to open stream: No such file or directory in /app/modules/onboarding/lib/onboarding.php:15",
+   "#0 /app/modules/onboarding/lib/onboarding.php(15): {closure}(2, 'require_once(/a...', '/app/modules/on...', 15)",
+   "#1 /app/modules/onboarding/lib/onboarding.php(15): require_once()",
+   "#2 /app/tests/lib/fixtures.php(28): require_once('/app/modules/on...')",
+   "#3 /app/tests/run.php(48): require_once('/app/tests/lib/...')",
+   "#4 {main}"
+  ]
+ },
+ "0016 - real-data onboarding: a source-document registry and a staged import|php -l migrations/0016_onboarding.php": {
+  "cmd": "php -l migrations/0016_onboarding.php",
+  "ok": true,
+  "secs": 0,
+  "milestone": "0016 - real-data onboarding: a source-document registry and a staged import",
+  "tail": [
+   "No syntax errors detected in migrations/0016_onboarding.php"
+  ]
+ },
+ "0016 - real-data onboarding: a source-document registry and a staged import|php -l modules/onboarding/lib/bulk.php": {
+  "cmd": "php -l modules/onboarding/lib/bulk.php",
+  "ok": true,
+  "secs": 0,
+  "milestone": "0016 - real-data onboarding: a source-document registry and a staged import",
+  "tail": [
+   "No syntax errors detected in modules/onboarding/lib/bulk.php"
+  ]
+ },
+ "0016 - real-data onboarding: a source-document registry and a staged import|php -l modules/onboarding/lib/sources.php": {
+  "cmd": "php -l modules/onboarding/lib/sources.php",
+  "ok": true,
+  "secs": 0,
+  "milestone": "0016 - real-data onboarding: a source-document registry and a staged import",
+  "tail": [
+   "No syntax errors detected in modules/onboarding/lib/sources.php"
+  ]
+ },
+ "0016 - real-data onboarding: a source-document registry and a staged import|php scripts/migrate.php": {
+  "cmd": "php scripts/migrate.php",
+  "ok": true,
+  "secs": 5,
+  "milestone": "0016 - real-data onboarding: a source-document registry and a staged import",
+  "tail": [
+   "applied 0016_onboarding",
+   "1 migration(s) applied."
+  ]
+ },
+ "0016 - real-data onboarding: a source-document registry and a staged import|bash scripts/test.sh integration": {
+  "cmd": "bash scripts/test.sh integration",
+  "ok": false,
+  "secs": 18,
+  "milestone": "0016 - real-data onboarding: a source-document registry and a staged import",
+  "tail": [
+   "#2 /app/tests/run.php(48): require_once('/app/tests/lib/...')",
+   "#3 {main}[2026-11-25 13:01:10] ErrorException: require_once(/app/modules/results/lib/meal.php): Failed to open stream: No such file or directory in /app/tests/lib/fixtures.php:30",
+   "#0 /app/tests/lib/fixtures.php(30): {closure}(2, 'require_once(/a...', '/app/tests/lib/...', 30)",
+   "#1 /app/tests/lib/fixtures.php(30): require_once()",
+   "#2 /app/tests/run.php(48): require_once('/app/tests/lib/...')",
+   "#3 {main}"
+  ]
+ },
+ "0016 - real-data onboarding: a source-document registry and a staged import|bash scripts/test.sh http": {
+  "cmd": "bash scripts/test.sh http",
+  "ok": false,
+  "secs": 18,
+  "milestone": "0016 - real-data onboarding: a source-document registry and a staged import",
+  "tail": [
+   "#2 /app/tests/run.php(48): require_once('/app/tests/lib/...')",
+   "#3 {main}[2026-11-25 13:01:27] ErrorException: require_once(/app/modules/results/lib/meal.php): Failed to open stream: No such file or directory in /app/tests/lib/fixtures.php:30",
+   "#0 /app/tests/lib/fixtures.php(30): {closure}(2, 'require_once(/a...', '/app/tests/lib/...', 30)",
+   "#1 /app/tests/lib/fixtures.php(30): require_once()",
+   "#2 /app/tests/run.php(48): require_once('/app/tests/lib/...')",
+   "#3 {main}"
+  ]
+ },
+ "0017 - capacity domain scores (SOCSI) and proposed improvement actions|php -l migrations/0017_capacity_domains.php": {
+  "cmd": "php -l migrations/0017_capacity_domains.php",
+  "ok": true,
+  "secs": 0,
+  "milestone": "0017 - capacity domain scores (SOCSI) and proposed improvement actions",
+  "tail": [
+   "No syntax errors detected in migrations/0017_capacity_domains.php"
+  ]
+ },
+ "0017 - capacity domain scores (SOCSI) and proposed improvement actions|php scripts/migrate.php": {
+  "cmd": "php scripts/migrate.php",
+  "ok": true,
+  "secs": 5,
+  "milestone": "0017 - capacity domain scores (SOCSI) and proposed improvement actions",
+  "tail": [
+   "applied 0017_capacity_domains",
+   "1 migration(s) applied."
+  ]
+ },
+ "0017 - capacity domain scores (SOCSI) and proposed improvement actions|bash scripts/test.sh integration": {
+  "cmd": "bash scripts/test.sh integration",
+  "ok": false,
+  "secs": 26,
+  "milestone": "0017 - capacity domain scores (SOCSI) and proposed improvement actions",
+  "tail": [
+   "#2 /app/tests/run.php(48): require_once('/app/tests/lib/...')",
+   "#3 {main}[2026-11-25 13:01:59] ErrorException: require_once(/app/modules/results/lib/meal.php): Failed to open stream: No such file or directory in /app/tests/lib/fixtures.php:30",
+   "#0 /app/tests/lib/fixtures.php(30): {closure}(2, 'require_once(/a...', '/app/tests/lib/...', 30)",
+   "#1 /app/tests/lib/fixtures.php(30): require_once()",
+   "#2 /app/tests/run.php(48): require_once('/app/tests/lib/...')",
+   "#3 {main}"
+  ]
+ },
+ "0018 - task assignment within workplan activities|php -l migrations/0018_tasks.php": {
+  "cmd": "php -l migrations/0018_tasks.php",
+  "ok": true,
+  "secs": 0,
+  "milestone": "0018 - task assignment within workplan activities",
+  "tail": [
+   "No syntax errors detected in migrations/0018_tasks.php"
+  ]
+ },
+ "0018 - task assignment within workplan activities|php -l modules/workplans/lib/tasks.php": {
+  "cmd": "php -l modules/workplans/lib/tasks.php",
+  "ok": true,
+  "secs": 0,
+  "milestone": "0018 - task assignment within workplan activities",
+  "tail": [
+   "No syntax errors detected in modules/workplans/lib/tasks.php"
+  ]
+ },
+ "0018 - task assignment within workplan activities|php -l modules/workplans/pages/task_view.php": {
+  "cmd": "php -l modules/workplans/pages/task_view.php",
+  "ok": true,
+  "secs": 0,
+  "milestone": "0018 - task assignment within workplan activities",
+  "tail": [
+   "No syntax errors detected in modules/workplans/pages/task_view.php"
+  ]
+ },
+ "0018 - task assignment within workplan activities|php scripts/migrate.php": {
+  "cmd": "php scripts/migrate.php",
+  "ok": true,
+  "secs": 11,
+  "milestone": "0018 - task assignment within workplan activities",
+  "tail": [
+   "applied 0018_tasks",
+   "1 migration(s) applied."
+  ]
+ },
+ "0018 - task assignment within workplan activities|bash scripts/test.sh integration": {
+  "cmd": "bash scripts/test.sh integration",
+  "ok": false,
+  "secs": 16,
+  "milestone": "0018 - task assignment within workplan activities",
+  "tail": [
+   "#2 /app/tests/run.php(48): require_once('/app/tests/lib/...')",
+   "#3 {main}[2026-11-25 13:02:31] ErrorException: require_once(/app/modules/results/lib/meal.php): Failed to open stream: No such file or directory in /app/tests/lib/fixtures.php:30",
+   "#0 /app/tests/lib/fixtures.php(30): {closure}(2, 'require_once(/a...', '/app/tests/lib/...', 30)",
+   "#1 /app/tests/lib/fixtures.php(30): require_once()",
+   "#2 /app/tests/run.php(48): require_once('/app/tests/lib/...')",
+   "#3 {main}"
+  ]
+ },
+ "0018 - task assignment within workplan activities|bash scripts/test.sh http": {
+  "cmd": "bash scripts/test.sh http",
+  "ok": false,
+  "secs": 16,
+  "milestone": "0018 - task assignment within workplan activities",
+  "tail": [
+   "#2 /app/tests/run.php(48): require_once('/app/tests/lib/...')",
+   "#3 {main}[2026-11-25 13:02:47] ErrorException: require_once(/app/modules/results/lib/meal.php): Failed to open stream: No such file or directory in /app/tests/lib/fixtures.php:30",
+   "#0 /app/tests/lib/fixtures.php(30): {closure}(2, 'require_once(/a...', '/app/tests/lib/...', 30)",
+   "#1 /app/tests/lib/fixtures.php(30): require_once()",
+   "#2 /app/tests/run.php(48): require_once('/app/tests/lib/...')",
+   "#3 {main}"
+  ]
+ },
+ "0019 - indicator calculation rules|php -l migrations/0019_indicator_rules.php": {
+  "cmd": "php -l migrations/0019_indicator_rules.php",
+  "ok": true,
+  "secs": 0,
+  "milestone": "0019 - indicator calculation rules",
+  "tail": [
+   "No syntax errors detected in migrations/0019_indicator_rules.php"
+  ]
+ },
+ "0019 - indicator calculation rules|php scripts/migrate.php": {
+  "cmd": "php scripts/migrate.php",
+  "ok": true,
+  "secs": 5,
+  "milestone": "0019 - indicator calculation rules",
+  "tail": [
+   "applied 0019_indicator_rules",
+   "1 migration(s) applied."
+  ]
+ },
+ "0019 - indicator calculation rules|bash scripts/test.sh integration": {
+  "cmd": "bash scripts/test.sh integration",
+  "ok": false,
+  "secs": 18,
+  "milestone": "0019 - indicator calculation rules",
+  "tail": [
+   "#2 /app/tests/run.php(48): require_once('/app/tests/lib/...')",
+   "#3 {main}[2026-11-25 13:03:11] ErrorException: require_once(/app/modules/results/lib/meal.php): Failed to open stream: No such file or directory in /app/tests/lib/fixtures.php:30",
+   "#0 /app/tests/lib/fixtures.php(30): {closure}(2, 'require_once(/a...', '/app/tests/lib/...', 30)",
+   "#1 /app/tests/lib/fixtures.php(30): require_once()",
+   "#2 /app/tests/run.php(48): require_once('/app/tests/lib/...')",
+   "#3 {main}"
+  ]
+ },
+ "0020 - MEAL registers: project monitoring visits, evaluations with management|php -l migrations/0020_meal_registers.php": {
+  "cmd": "php -l migrations/0020_meal_registers.php",
+  "ok": true,
+  "secs": 0,
+  "milestone": "0020 - MEAL registers: project monitoring visits, evaluations with management",
+  "tail": [
+   "No syntax errors detected in migrations/0020_meal_registers.php"
+  ]
+ },
+ "0020 - MEAL registers: project monitoring visits, evaluations with management|php -l modules/dashboard/lib/inbox.php": {
+  "cmd": "php -l modules/dashboard/lib/inbox.php",
+  "ok": true,
+  "secs": 0,
+  "milestone": "0020 - MEAL registers: project monitoring visits, evaluations with management",
+  "tail": [
+   "No syntax errors detected in modules/dashboard/lib/inbox.php"
+  ]
+ },
+ "0020 - MEAL registers: project monitoring visits, evaluations with management|php -l modules/results/lib/meal.php": {
+  "cmd": "php -l modules/results/lib/meal.php",
+  "ok": true,
+  "secs": 0,
+  "milestone": "0020 - MEAL registers: project monitoring visits, evaluations with management",
+  "tail": [
+   "No syntax errors detected in modules/results/lib/meal.php"
+  ]
+ },
+ "0020 - MEAL registers: project monitoring visits, evaluations with management|php scripts/migrate.php": {
+  "cmd": "php scripts/migrate.php",
+  "ok": true,
+  "secs": 5,
+  "milestone": "0020 - MEAL registers: project monitoring visits, evaluations with management",
+  "tail": [
+   "applied 0020_meal_registers",
+   "1 migration(s) applied."
+  ]
+ },
+ "0020 - MEAL registers: project monitoring visits, evaluations with management|bash scripts/test.sh integration": {
+  "cmd": "bash scripts/test.sh integration",
+  "ok": false,
+  "secs": 52,
+  "milestone": "0020 - MEAL registers: project monitoring visits, evaluations with management",
+  "tail": [
+   "  ok   [integration] WorkplansTest \u203a a revision copies the activities, and approving it supersedes the old version",
+   "  ok   [integration] WorkplansTest \u203a viewers see approved versions only; drafts stay with editors and approvers",
+   "  ok   [integration] WorkplansTest \u203a each project's workplans are invisible to the other project's team",
+   "  ok   [integration] WorkplansTest \u203a the schedule spans every month of the period, and activity windows follow the dates",
+   "",
+   "160 passed, 4 failed (33.8s)"
+  ]
+ },
+ "0021 - FPC operational modules: community-structure training and follow-up, s|php -l migrations/0021_fpc_modules.php": {
+  "cmd": "php -l migrations/0021_fpc_modules.php",
+  "ok": true,
+  "secs": 0,
+  "milestone": "0021 - FPC operational modules: community-structure training and follow-up, s",
+  "tail": [
+   "No syntax errors detected in migrations/0021_fpc_modules.php"
+  ]
+ },
+ "0021 - FPC operational modules: community-structure training and follow-up, s|php scripts/migrate.php": {
+  "cmd": "php scripts/migrate.php",
+  "ok": true,
+  "secs": 4,
+  "milestone": "0021 - FPC operational modules: community-structure training and follow-up, s",
+  "tail": [
+   "applied 0021_fpc_modules",
+   "1 migration(s) applied."
+  ]
+ },
+ "0021 - FPC operational modules: community-structure training and follow-up, s|bash scripts/test.sh integration": {
+  "cmd": "bash scripts/test.sh integration",
+  "ok": true,
+  "secs": 49,
+  "milestone": "0021 - FPC operational modules: community-structure training and follow-up, s",
+  "tail": [
+   "  ok   [integration] WorkplansTest \u203a a revision copies the activities, and approving it supersedes the old version",
+   "  ok   [integration] WorkplansTest \u203a viewers see approved versions only; drafts stay with editors and approvers",
+   "  ok   [integration] WorkplansTest \u203a each project's workplans are invisible to the other project's team",
+   "  ok   [integration] WorkplansTest \u203a the schedule spans every month of the period, and activity windows follow the dates",
+   "",
+   "168 passed, 0 failed (33.3s)"
+  ]
+ },
+ "0021 - FPC operational modules: community-structure training and follow-up, s|bash scripts/test.sh http": {
+  "cmd": "bash scripts/test.sh http",
+  "ok": true,
+  "secs": 72,
+  "milestone": "0021 - FPC operational modules: community-structure training and follow-up, s",
+  "tail": [
+   "  ok   [http] ScriptsTest \u203a the first administrator is created with a one-time link, and only once",
+   "  ok   [http] TasksHttpTest \u203a a coordinator assigns a task, the field officer sees it with its deadline and completes it; a colleague cannot",
+   "  ok   [http] WorkplansHttpTest \u203a a workplan is drafted, submitted and approved by two different people",
+   "  ok   [http] WorkplansHttpTest \u203a workplan pages refuse people without the right permission",
+   "",
+   "48 passed, 0 failed (55.0s)"
+  ]
+ },
+ "0022 - data questionnaire: the answers FPC gives for information missing from|php -l migrations/0022_onboarding_questionnaire.php": {
+  "cmd": "php -l migrations/0022_onboarding_questionnaire.php",
+  "ok": true,
+  "secs": 0,
+  "milestone": "0022 - data questionnaire: the answers FPC gives for information missing from",
+  "tail": [
+   "No syntax errors detected in migrations/0022_onboarding_questionnaire.php"
+  ]
+ },
+ "0022 - data questionnaire: the answers FPC gives for information missing from|php -l modules/onboarding/lib/questionnaire.php": {
+  "cmd": "php -l modules/onboarding/lib/questionnaire.php",
+  "ok": true,
+  "secs": 0,
+  "milestone": "0022 - data questionnaire: the answers FPC gives for information missing from",
+  "tail": [
+   "No syntax errors detected in modules/onboarding/lib/questionnaire.php"
+  ]
+ },
+ "0022 - data questionnaire: the answers FPC gives for information missing from|php -l modules/onboarding/pages/questionnaire.php": {
+  "cmd": "php -l modules/onboarding/pages/questionnaire.php",
+  "ok": true,
+  "secs": 0,
+  "milestone": "0022 - data questionnaire: the answers FPC gives for information missing from",
+  "tail": [
+   "No syntax errors detected in modules/onboarding/pages/questionnaire.php"
+  ]
+ },
+ "0022 - data questionnaire: the answers FPC gives for information missing from|php scripts/migrate.php": {
+  "cmd": "php scripts/migrate.php",
+  "ok": true,
+  "secs": 1,
+  "milestone": "0022 - data questionnaire: the answers FPC gives for information missing from",
+  "tail": [
+   "applied 0022_onboarding_questionnaire",
+   "1 migration(s) applied."
+  ]
+ },
+ "0022 - data questionnaire: the answers FPC gives for information missing from|bash scripts/test.sh integration": {
+  "cmd": "bash scripts/test.sh integration",
+  "ok": true,
+  "secs": 48,
+  "milestone": "0022 - data questionnaire: the answers FPC gives for information missing from",
+  "tail": [
+   "  ok   [integration] WorkplansTest \u203a a revision copies the activities, and approving it supersedes the old version",
+   "  ok   [integration] WorkplansTest \u203a viewers see approved versions only; drafts stay with editors and approvers",
+   "  ok   [integration] WorkplansTest \u203a each project's workplans are invisible to the other project's team",
+   "  ok   [integration] WorkplansTest \u203a the schedule spans every month of the period, and activity windows follow the dates",
+   "",
+   "170 passed, 0 failed (31.7s)"
+  ]
+ },
+ "0022 - data questionnaire: the answers FPC gives for information missing from|bash scripts/test.sh http": {
+  "cmd": "bash scripts/test.sh http",
+  "ok": true,
+  "secs": 76,
+  "milestone": "0022 - data questionnaire: the answers FPC gives for information missing from",
+  "tail": [
+   "  ok   [http] ScriptsTest \u203a the first administrator is created with a one-time link, and only once",
+   "  ok   [http] TasksHttpTest \u203a a coordinator assigns a task, the field officer sees it with its deadline and completes it; a colleague cannot",
+   "  ok   [http] WorkplansHttpTest \u203a a workplan is drafted, submitted and approved by two different people",
+   "  ok   [http] WorkplansHttpTest \u203a workplan pages refuse people without the right permission",
+   "",
+   "49 passed, 0 failed (59.7s)"
+  ]
+ },
+ "Full test suite: every test against a fresh database|php tests/run.php unit": {
+  "cmd": "php tests/run.php unit",
+  "ok": true,
+  "secs": 7,
+  "milestone": "Full test suite: every test against a fresh database",
+  "tail": [
+   "  ok   [unit] SecurityStaticTest \u203a browser storage is never used as a data store (only sidebar display preferences)",
+   "  ok   [unit] SecurityStaticTest \u203a the web root contains only the front controller, assets, the frozen demo and its two short-link forwards",
+   "  ok   [unit] SecurityStaticTest \u203a migrations are numbered in order without gaps or duplicates",
+   "  ok   [unit] SecurityStaticTest \u203a dual-control permissions are declared only with the dual_control grant mode",
+   "",
+   "12 passed, 0 failed (5.7s)"
+  ]
+ },
+ "Full test suite: every test against a fresh database|bash scripts/test.sh": {
+  "cmd": "bash scripts/test.sh",
+  "ok": true,
+  "secs": 140,
+  "milestone": "Full test suite: every test against a fresh database",
+  "tail": [
+   "  ok   [http] ScriptsTest \u203a the first administrator is created with a one-time link, and only once",
+   "  ok   [http] TasksHttpTest \u203a a coordinator assigns a task, the field officer sees it with its deadline and completes it; a colleague cannot",
+   "  ok   [http] WorkplansHttpTest \u203a a workplan is drafted, submitted and approved by two different people",
+   "  ok   [http] WorkplansHttpTest \u203a workplan pages refuse people without the right permission",
+   "",
+   "231 passed, 0 failed (120.6s)"
+  ]
+ }
+}

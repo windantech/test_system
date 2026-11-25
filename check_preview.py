@@ -114,6 +114,8 @@ def main():
     ap.add_argument("work")
     ap.add_argument("--exclude", action="append", default=[])
     ap.add_argument("--stop-after", type=int, default=0, help="stop after N browse steps")
+    ap.add_argument("--run-tests", action="store_true",
+                    help="also run the Docker test suites (bash scripts/test.sh ...)")
     ap.add_argument("--probe", help="also try every page in this routes file at the end of "
                                     "each milestone and write the first passing milestone "
                                     "of each to PROBE.json")
@@ -125,7 +127,10 @@ def main():
             if not re.search(r"/(new|edit|delete|remove|download|logout|switch-project|password|login)", path):
                 probe_urls.append(path)
 
-    src, work = Path(a.source), Path(a.work)
+    # resolve() expands Windows 8.3 short names (e.g. SIRWIN~1), which Docker cannot mount
+    src, work = Path(a.source).resolve(), Path(a.work).resolve()
+    work.parent.mkdir(parents=True, exist_ok=True)
+    work = work.parent.resolve() / work.name
     if work.exists():
         shutil.rmtree(work)
     work.mkdir(parents=True)
@@ -139,6 +144,7 @@ def main():
     milestone = ""
     problems = 0
     visits = 0
+    run_results = {}
     key = "base64:" + base64.b64encode(os.urandom(32)).decode()
     try:
         def probe():
@@ -156,18 +162,32 @@ def main():
                 probe()
                 milestone = val
                 continue
-            if kind == "type":
+            if kind in ("type", "preload"):
                 dst = work / val
                 dst.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(src / val, dst)
-            elif kind == "newfile":
+            elif kind in ("newfile", "preloadfile"):
                 path, content = val
                 (work / path).write_text(sub(content.replace("{{APP_KEY}}", key)), encoding="utf-8")
             elif kind == "run":
                 wait, cmd = cr.parse_run(val)
-                if "test.sh" in cmd:
+                if "test.sh" in cmd and not a.run_tests:
                     continue
+                t0 = time.time()
                 code, out, clip = run_cmd(cmd, work, env)
+                rk = f"{milestone}|{cmd}"              # stable across plan regeneration
+                ok = code == 0
+                if "test.sh" in cmd or "tests/run.php" in cmd:
+                    # a crash during start-up can still exit 0: only a summary proves a pass
+                    ok = ok and re.search(r"\b[1-9]\d* passed, 0 failed", out) is not None
+                code = 0 if ok else (code or 1)
+                run_results[rk] = {"cmd": cmd, "ok": ok, "secs": round(time.time() - t0),
+                                   "milestone": milestone,
+                                   "tail": out.strip().splitlines()[-6:]}
+                if "test.sh" in cmd or "tests/run.php" in cmd:
+                    summary = next((l for l in reversed(out.splitlines()) if "passed" in l), "")
+                    print(f"  [{'ok ' if code == 0 else 'ERR'}] {milestone[:38]:38} $ {cmd}  "
+                          f"{summary.strip()}  ({run_results[rk]['secs']} s)")
                 if clip:
                     clipboard = clip
                 if "docker run" in cmd:
@@ -239,6 +259,12 @@ def main():
             subprocess.run(["taskkill", "/F", "/T", "/PID", str(server.pid)], capture_output=True)
         subprocess.run(["docker", "rm", "-f", "fpc-check-db"], capture_output=True)
     print(f"\n{visits} preview visits checked, {problems} problem(s).")
+    import json
+    runs_out = Path(a.plan).with_suffix(".runs.json")
+    runs_out.write_text(json.dumps(run_results, indent=1), encoding="utf-8")
+    tests = [r for r in run_results.values() if "test" in r["cmd"]]
+    print(f"Test runs: {sum(r['ok'] for r in tests)} passed, "
+          f"{sum(not r['ok'] for r in tests)} failed. Wrote {runs_out}")
     if a.probe:
         import json
         out = Path(a.plan).with_suffix(".probe.json")

@@ -5,10 +5,12 @@ rem OUT    = an EMPTY folder where it will be rebuilt on camera
 set "SOURCE=%USERPROFILE%\Documents\folder"
 set "OUT=%USERPROFILE%\Documents\folder_rebuilt"
 
-rem Build plan:  login_preview_plan.txt = sign-in first, then each feature, with the app in Chrome
+rem Build plan:  video_plan.txt         = setup pre-loaded; sign-in first, then each feature,
+rem                                       built, run in Chrome and tested on screen
+rem              login_preview_plan.txt = sign-in first, everything typed
 rem              preview_plan.txt       = original order, with the app in Chrome
 rem              build_plan.txt         = original order, code and tests only
-set "PLAN=login_preview_plan.txt"
+set "PLAN=video_plan.txt"
 
 rem Hours per recording session
 set "HOURS=3"
