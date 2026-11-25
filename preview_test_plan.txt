@@ -1,0 +1,99 @@
+﻿# TEST: sign-in files are written instantly (--skip-to), then the live preview runs on screen.
+# Login-first build plan: sign-in is built and working first, then each feature.
+
+## Sign-in: configuration, database, router, layout and authentication
+.gitignore
+.env.example
+composer.json
+.htaccess
+bootstrap/helpers.php
+config/env.php
+config/app.php
+config/database.php
+config/features.php
+bootstrap/init.php
+db/connection.php
+db/query.php
+db/migrate.php
+lib/http.php
+lib/router.php
+lib/crypto.php
+lib/forms.php
+lib/layout.php
+lib/audit.php
+lib/auth.php
+lib/authz.php
+lib/mailer.php
+lib/notifications.php
+lib/rbac.php
+lib/rbac_catalogue.php
+lib/sidebar.php
+lib/workflow.php
+migrations/0001_foundation.php
+migrations/0002_organisation_roles_permissions.php
+modules/admin/lib/admin.php
+modules/auth/pages/change.php
+modules/auth/pages/forgot.php
+modules/auth/pages/login.php
+modules/auth/pages/logout.php
+modules/auth/pages/profile.php
+modules/auth/pages/reset.php
+modules/dashboard/lib/inbox.php
+scripts/generate_key.php
+scripts/migrate.php
+scripts/create_admin.php
+scripts/seed.php
+run php -l lib/auth.php
+run php -l modules/auth/pages/login.php
+config/routes.php
+public/.htaccess
+public/index.php
+
+## Local preview: database, dev server and the first sign-in
+newfile .env
+APP_NAME="FPC Eval360"
+APP_ENV=development
+APP_DEBUG=true
+APP_URL=http://127.0.0.1:8080
+APP_TIMEZONE=Africa/Blantyre
+APP_KEY={{APP_KEY}}
+
+CLIENT_SLUG=fpc
+CLIENT_NAME="FPC"
+CLIENT_FULL_NAME="Future Planning for the Child"
+CLIENT_COUNTRY=MW
+CLIENT_CURRENCY=MWK
+
+DB_HOST=127.0.0.1
+DB_PORT=3307
+DB_NAME=fpc_dev
+DB_USER=root
+DB_PASS=devpass
+DB_CHARSET=utf8mb4
+
+SESSION_SECURE_COOKIE=false
+SESSION_IDLE_MIN=240
+SESSION_ABSOLUTE_HOURS=12
+
+RATE_LIMIT_LOGIN=5
+RATE_LIMIT_LOCKOUT_MINUTES=15
+MAIL_ENABLED=false
+
+STORAGE_BACKEND=local
+STORAGE_PATH=storage/uploads
+STORAGE_MAX_UPLOAD_MB=20
+LOG_LEVEL=debug
+endfile
+newfile .env.local
+# Machine-specific overrides of .env (git-ignored).
+endfile
+run 45 docker run -d --name fpc-dev-db --restart unless-stopped -p 3307:3306 -e MYSQL_ROOT_PASSWORD=devpass -e MYSQL_DATABASE=fpc_dev mysql:8.4
+run 60 until docker exec fpc-dev-db mysqladmin ping -h127.0.0.1 -uroot -pdevpass --silent; do sleep 3; done; echo database ready
+run 25 php scripts/migrate.php
+run 15 php scripts/seed.php reference
+serve php -S 127.0.0.1:8080 -t public public/index.php
+browse /login
+run 10 out=$(php scripts/create_admin.php --email=admin@fpc.test --name="Dev Admin"); echo "$out"; echo "$out" | grep -o 'http[^ ]*' | clip
+browse clipboard | type Dev-Preview-2026! | tab | type Dev-Preview-2026! | enter
+browse /login?next=/profile | type admin@fpc.test | tab | type Dev-Preview-2026! | enter
+run 10 docker exec fpc-dev-db mysql -uroot -pdevpass fpc_dev -e "INSERT IGNORE INTO user_roles (user_id, role_id, project_id) SELECT u.id, r.id, p.id FROM users u, roles r, projects p WHERE u.email = 'admin@fpc.test' AND r.role_key IN ('programs_manager', 'finance_officer', 'meal_officer', 'project_coordinator')"

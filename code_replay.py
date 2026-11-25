@@ -981,8 +981,31 @@ class Replayer:
         self.scroll(notches)
         self.sleep(self.rng.uniform(1.0, 2.5) * self.a.think)
 
+    def subst(self, text):
+        for pair in self.a.replace:
+            old, _, new = pair.partition("=")
+            text = text.replace(old, new)
+        return text
+
+    def fast_forward(self, kind, val):
+        """--skip-to: put a file in place without typing it (tests only)."""
+        if kind == "type":
+            dst = self.out / val
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            dst.write_bytes((self.src / val).read_bytes())
+        elif kind == "newfile":
+            path, content = val
+            dst = self.out / path
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            dst.write_text(self.subst(content.replace("{{APP_KEY}}", self.get_app_key())),
+                           encoding="utf-8")
+
     def do_step(self, kind, val, key, file_no, n_files, resume_line):
         """Run one non-milestone plan step; returns the updated file counter."""
+        if kind in ("run", "serve", "browse", "restore"):
+            val = self.subst(val)
+        elif kind == "newfile":
+            val = (val[0], self.subst(val[1]))
         if kind == "run":
             self.run_command(val)
         elif kind == "serve":
@@ -1267,11 +1290,20 @@ class Replayer:
                     rk, _, rv = val.partition(" ")
                     self.log(f"Restoring from the last session: {val}")
                     self.do_step(rk, rv.strip(), key + ":r", file_no, len(files), {})
+            skipping = bool(self.a.skip_to)
             for kind, key, val in steps:
                 if kind == "milestone":
+                    if skipping and val.startswith(self.a.skip_to):
+                        skipping = False
+                        self.log(f"Skipped ahead (test): files before '{val}' were written "
+                                 "without typing")
                     self.log(f"== {val}")
                     continue
                 if key in done:
+                    continue
+                if skipping:
+                    self.fast_forward(kind, val)
+                    done.add(key)
                     continue
                 if self.time_is_up():
                     self.log(f"Session time limit of {self.a.max_hours:g} h reached.")
@@ -1390,6 +1422,12 @@ def main():
     p.add_argument("--browser-title", default=" - Google Chrome",
                    help="suffix of the browser window title (default ' - Google Chrome')")
     p.add_argument("--no-browser", action="store_true", help="never switch to the browser")
+    p.add_argument("--skip-to", metavar="MILESTONE",
+                   help="TESTING: write every file before this milestone instantly (no typing) "
+                        "and start the live run there, e.g. --skip-to \"Local preview\"")
+    p.add_argument("--replace", action="append", default=[], metavar="OLD=NEW",
+                   help="TESTING: replace text in commands, pages and new files "
+                        "(e.g. a separate database name or port)")
     p.add_argument("--app-url", default="http://127.0.0.1:8080",
                    help="where the rebuilt app is served, for 'browse /path' steps")
     p.add_argument("--no-mouse", action="store_true", help="no scrolling/clicking around")
