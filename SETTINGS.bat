@@ -3,7 +3,7 @@ rem ===== Edit these two lines for this computer =====
 rem SOURCE = the folder with the existing system's code
 rem OUT    = an EMPTY folder where it will be rebuilt on camera
 set "SOURCE=%USERPROFILE%\Documents\folder"
-set "OUT=%USERPROFILE%\Documents\folder_rebuilt"
+set "OUT=%USERPROFILE%\Documents\eval360_FPC"
 
 rem Build plan:  video_plan.txt         = setup pre-loaded; sign-in first, then each feature,
 rem                                       built, run in Chrome and tested on screen
